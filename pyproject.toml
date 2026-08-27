@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "grounded-investment-rag"
+version = "0.1.0"
+description = "A local, source-aware RAG foundation for investment education."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "beautifulsoup4>=4.12",
+    "chromadb>=0.5",
+    "requests>=2.31",
+    "sentence-transformers>=3.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+investment-rag = "investment_rag.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/investment_rag"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
