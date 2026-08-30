@@ -17,6 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+demo = ["streamlit>=1.40"]
 
 [project.scripts]
 investment-rag = "investment_rag.cli:main"

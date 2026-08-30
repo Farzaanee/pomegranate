@@ -4,6 +4,10 @@
 > information from official sources; it does not recommend specific investments or
 > replace professional advice.
 
+**Live demo:** the Streamlit retrieval UI in [`app.py`](app.py) is deployed on
+Streamlit Community Cloud. Run it locally with `streamlit run app.py` after
+`uv sync --extra demo`.
+
 A retrieval-augmented pipeline that grounds investment-education answers in
 trusted public sources — ESMA's Investor Corner (EU), MoneyHelper (UK), and FCA
 InvestSmart (UK). Every retrieved passage keeps its source name, region, URL,

@@ -62,7 +62,7 @@ accessible page.
 
 | Area | Issue |
 | --- | --- |
-| **No JavaScript** | `requests` returns only server-rendered HTML. A client-side-rendered SPA hands back a nav shell with no article body, and `clean_html` then strips the shell down to nothing. (Both current live sources — ESMA, FCA — are server-rendered, so this doesn't bite *today*, but any React/Vue source would.) |
+| **No JavaScript** | `requests` returns only server-rendered HTML. A client-side-rendered (CSR) SPA (single page app) hands back a nav shell with no article body, and `clean_html` then strips the shell down to nothing. (Both current live sources — ESMA, FCA — are server-rendered, so this doesn't bite *today*, but any React/Vue source would.) |
 | **Bot protection** | MoneyHelper sits behind a Cloudflare challenge (`cf-mitigated: challenge`) and returns `403` to every non-browser client on every path. By design the collector reports and skips rather than bypassing — so that whole domain is simply uncollectable here. |
 | **Content extraction is heuristic** | Whole tag *types* are removed. A page that puts its real content in an `<aside>`, or its nav inside `<main>`, gets mangled. The `<main>`→`<article>`→`<body>` fallback can grab far too much (entire body) or, as with FCA InvestSmart, land on an `<article>` that only holds ~1,600 characters of blurbs. |
 | **Structure is destroyed** | Whitespace collapse flattens headings, lists, and paragraphs into one run-on string ("Risk Diversification spreads risk."). Downstream chunking has no section boundaries to respect. |

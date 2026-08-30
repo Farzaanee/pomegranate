@@ -1,0 +1,9 @@
+# Dependency set Streamlit Community Cloud installs before running app.py.
+# "." installs this project (its runtime deps come from pyproject.toml) so
+# `import investment_rag` resolves; the extra index pulls the CPU-only torch
+# build, which is far smaller than the default CUDA wheel and all the free
+# tier can use.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+.
+streamlit>=1.40
