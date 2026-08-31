@@ -1,13 +1,257 @@
 [
   {
-
     "name": "ESMA Investor Corner",
     "region": "EU",
     "url": "https://www.esma.europa.eu/investor-corner"
   },
   {
+    "name": "ESMA Investor Corner",
+    "region": "EU",
+    "url": "https://www.esma.europa.eu/investor-corner/get-ready-invest"
+  },
+  {
+    "name": "ESMA Investor Corner",
+    "region": "EU",
+    "url": "https://www.esma.europa.eu/investor-corner/cost-investment-products"
+  },
+  {
+    "name": "ESMA Investor Corner",
+    "region": "EU",
+    "url": "https://www.esma.europa.eu/investor-corner/is-the-firm-regulated"
+  },
+  {
+    "name": "ESMA Investor Corner",
+    "region": "EU",
+    "url": "https://www.esma.europa.eu/investor-corner/frauds-and-scams"
+  },
+  {
+    "name": "ESMA Investor Corner",
+    "region": "EU",
+    "url": "https://www.esma.europa.eu/investor-corner/product-intervention"
+  },
+  {
+    "name": "ESMA Investor Corner",
+    "region": "EU",
+    "url": "https://www.esma.europa.eu/investor-corner/make-complaint"
+  },
+  {
+    "name": "ESMA Investor Corner",
+    "region": "EU",
+    "url": "https://www.esma.europa.eu/document/warning-use-ai-investing"
+  },
+  {
     "name": "FCA InvestSmart",
     "region": "UK",
-    "url": "https://www.fca.org.uk/investsmart"
+    "url": "https://www.fca.org.uk/investsmart/should-you-invest"
+  },
+  {
+    "name": "FCA InvestSmart",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/investsmart/5-questions-ask-you-invest"
+  },
+  {
+    "name": "FCA InvestSmart",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/investsmart/right-investment-you"
+  },
+  {
+    "name": "FCA InvestSmart",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/investsmart/golden-rules-investing"
+  },
+  {
+    "name": "FCA InvestSmart",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/investsmart/risk-returns"
+  },
+  {
+    "name": "FCA InvestSmart",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/investsmart/diversification"
+  },
+  {
+    "name": "FCA InvestSmart",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/investsmart/advantages-mainstream-investments"
+  },
+  {
+    "name": "FCA InvestSmart",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/investsmart/understanding-high-risk-investments"
+  },
+  {
+    "name": "FCA InvestSmart",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/investsmart/5-smart-investment-checks"
+  },
+  {
+    "name": "FCA InvestSmart",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/investsmart/understanding-price-graphs"
+  },
+  {
+    "name": "FCA InvestSmart",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/investsmart/understanding-crowdfunding"
+  },
+  {
+    "name": "FCA InvestSmart",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/investsmart/unregulated-collective-investment-schemes"
+  },
+  {
+    "name": "FCA InvestSmart",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/investsmart/crypto-basics"
+  },
+  {
+    "name": "FCA InvestSmart",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/investsmart/investing-crypto"
+  },
+  {
+    "name": "FCA InvestSmart",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/investsmart/using-ai-investment-research"
+  },
+  {
+    "name": "FCA InvestSmart",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/investsmart/hype-spot-signs-manage-your-fomo"
+  },
+  {
+    "name": "FCA InvestSmart",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/investsmart/calm-guide"
+  },
+  {
+    "name": "FCA InvestSmart",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/investsmart/rational-guide"
+  },
+  {
+    "name": "FCA InvestSmart",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/investsmart/informed-guide"
+  },
+  {
+    "name": "FCA InvestSmart",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/investsmart/pump-and-dump-schemes"
+  },
+  {
+    "name": "FCA InvestSmart",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/investsmart/lessons-learn-gamestop-episode"
+  },
+  {
+    "name": "FCA InvestSmart",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/investsmart/swipe-left-invest-right-how-dating-principles-can-be-applied-investing"
+  },
+  {
+    "name": "FCA Consumer Warnings",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/consumers/your-rights-financial-services"
+  },
+  {
+    "name": "FCA Consumer Warnings",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/consumers/financial-terms"
+  },
+  {
+    "name": "FCA Consumer Warnings",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/consumers/how-check-firm-individual-authorised"
+  },
+  {
+    "name": "FCA Consumer Warnings",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/consumers/protect-yourself-scams"
+  },
+  {
+    "name": "FCA Consumer Warnings",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/consumers/clone-firms-individuals"
+  },
+  {
+    "name": "FCA Consumer Warnings",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/consumers/misleading-financial-promotions"
+  },
+  {
+    "name": "FCA Consumer Warnings",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/consumers/dealing-eea-firms-and-investment-funds"
+  },
+  {
+    "name": "FCA Consumer Warnings",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/consumers/crypto-investment-scams"
+  },
+  {
+    "name": "FCA Consumer Warnings",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/consumers/online-trading-scams"
+  },
+  {
+    "name": "FCA Consumer Warnings",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/consumers/forex-trading-scams"
+  },
+  {
+    "name": "FCA Consumer Warnings",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/consumers/binary-options-scams"
+  },
+  {
+    "name": "FCA Consumer Warnings",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/consumers/share-bond-and-boiler-room-scams"
+  },
+  {
+    "name": "FCA Consumer Warnings",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/consumers/recovery-room-scams"
+  },
+  {
+    "name": "FCA Consumer Warnings",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/consumers/get-rich-quick-ponzi-and-pyramid-schemes"
+  },
+  {
+    "name": "FCA Consumer Warnings",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/consumers/land-banking-investment-scams"
+  },
+  {
+    "name": "FCA Consumer Warnings",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/consumers/carbon-credit-trading-scams"
+  },
+  {
+    "name": "FCA Consumer Warnings",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/consumers/mini-bonds"
+  },
+  {
+    "name": "FCA Consumer Warnings",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/consumers/loan-fee-fraud"
+  },
+  {
+    "name": "FCA Consumer Warnings",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/consumers/pension-scams"
+  },
+  {
+    "name": "FCA Consumer Warnings",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/consumers/side-pockets"
+  },
+  {
+    "name": "FCA Consumer Warnings",
+    "region": "UK",
+    "url": "https://www.fca.org.uk/consumers/sustainable-investment-labels-greenwashing"
   }
 ]
