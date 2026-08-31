@@ -72,12 +72,13 @@ def main() -> None:
     st.caption(DISCLAIMER)
 
     documents = load_documents(RAW_DIR)
+    sources = sorted({(document.source_name, document.region) for document in documents})
     with st.sidebar:
         st.header("Knowledge base")
-        for document in documents:
-            st.markdown(f"- **{document.source_name}** ({document.region})")
+        for source_name, region in sources:
+            st.markdown(f"- **{source_name}** ({region})")
         st.caption(
-            f"{len(documents)} official source document(s) indexed. "
+            f"{len(sources)} official source(s) across {len(documents)} indexed page(s). "
             "Phase 1 of the project plan — retrieval only, no reasoning layer yet."
         )
         region_choice = st.radio("Region filter", ["All", "EU", "UK"], horizontal=True)
