@@ -3,24 +3,27 @@
 Run locally with ``streamlit run app.py``. On Hugging Face Spaces the Streamlit
 SDK reads the YAML header in ``README.md`` and runs this file automatically.
 
-The app indexes the source documents committed under ``data/raw/`` into a fresh
-Chroma store on startup, then exposes semantic search with the same region
-filter as the ``investment-rag query`` command.
+The Chroma index is built offline by ``investment-rag build`` and committed under
+``data/index/``; this app just opens it and exposes semantic search with the same
+region filter as the ``investment-rag query`` command. Nothing in the knowledge
+base is re-embedded at startup — only the user's query is embedded, at search
+time.
 """
 
 from __future__ import annotations
 
 import json
+import shutil
 import tempfile
 from pathlib import Path
 
 import streamlit as st
 
-from investment_rag.chunking import chunk_documents
 from investment_rag.models import SearchResult, SourceDocument
 from investment_rag.retrieval import Retriever
 
 RAW_DIR = Path(__file__).parent / "data" / "raw"
+INDEX_DIR = Path(__file__).parent / "data" / "index"
 DISCLAIMER = (
     "Educational only — not regulated financial advice. Passages are retrieved "
     "verbatim from official public sources and are not investment recommendations."
@@ -35,16 +38,18 @@ def load_documents(directory: Path) -> list[SourceDocument]:
     ]
 
 
-@st.cache_resource(show_spinner="Loading the embedding model and building the index…")
-def build_retriever() -> Retriever:
-    """Chunk the committed documents and index them in a throwaway Chroma store.
+@st.cache_resource(show_spinner="Opening the search index…")
+def load_retriever() -> Retriever:
+    """Open the committed Chroma index from a writable temp copy.
 
-    Cached for the life of the Streamlit process, so the embedding model loads
-    and the index builds once rather than on every widget interaction.
+    The index ships in the repo (``data/index/``), so startup does no chunking or
+    document embedding — it only copies ~8 MB of files and opens the store. The
+    copy keeps Chroma's journal files out of the read-only deployment checkout.
+    Cached for the life of the Streamlit process.
     """
-    retriever = Retriever(persist_dir=tempfile.mkdtemp(prefix="chroma-"))
-    retriever.index(chunk_documents(load_documents(RAW_DIR)))
-    return retriever
+    working_copy = Path(tempfile.mkdtemp(prefix="chroma-")) / "index"
+    shutil.copytree(INDEX_DIR, working_copy)
+    return Retriever(persist_dir=working_copy)
 
 
 def render_result(result: SearchResult) -> None:
@@ -85,7 +90,7 @@ def main() -> None:
     if not question:
         return
 
-    retriever = build_retriever()
+    retriever = load_retriever()
     region = None if region_choice == "All" else region_choice
     results = retriever.search(question, limit=limit, region=region)
     if not results:

@@ -2,4 +2,8 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.DS_Store
+result.json
+
+# Local CLI scratch store. The deployed index lives in data/index/ and IS committed.
 data/chroma/

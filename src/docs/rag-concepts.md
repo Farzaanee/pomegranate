@@ -5,7 +5,7 @@ weak. Code lives in [`src/investment_rag/`](src/investment_rag/); this document
 explains the *why* and the *what could go wrong*.
 
 ```
-sources.json ──► collect ──► data/raw/*.json ──► build ──► data/chroma/ ──► query
+sources.json ──► collect ──► data/raw/*.json ──► build ──► data/index/ ──► query
                 (fetch +      (cleaned docs,     (chunk +   (vectors +      (embed
                  clean)        reviewable)        embed)      metadata)       + search)
 ```
@@ -160,12 +160,17 @@ appears whole in at least one chunk.
 
 ### How it works
 
-- **`SentenceTransformerEmbedder`** wraps `all-MiniLM-L6-v2` (384-dim,
-  English, general-purpose) and calls `model.encode(..., normalize_embeddings=True)`
-  so every vector is unit length. The model (~90 MB) plus PyTorch download from
-  Hugging Face on first use and are then cached.
-- **`Retriever`** holds a `chromadb.PersistentClient` at `data/chroma` and a
-  collection `investment_knowledge` created with `hnsw:space = "cosine"`.
+- **`OnnxMiniLmEmbedder`** wraps Chroma's `ONNXMiniLM_L6_V2` — the same
+  `all-MiniLM-L6-v2` model (384-dim, English, general-purpose), L2-normalized so
+  every vector is unit length, but running on ONNX Runtime with **no PyTorch**.
+  That drops ~450 MB from the install and a few hundred MB of resident memory,
+  which is what keeps the deployment inside the Streamlit Community Cloud free
+  tier's 1 GB RAM. The ~80 MB ONNX weights download on first use and are cached
+  in `~/.cache/chroma/`. Tests inject a fake embedder, so nothing downloads there.
+- **`Retriever`** holds a `chromadb.PersistentClient` at `data/index` and a
+  collection `investment_knowledge` created with `hnsw:space = "cosine"`. The
+  built index is committed, so the Streamlit app opens it directly instead of
+  re-embedding the knowledge base on startup — only the query is embedded.
 - **`index(chunks)`** computes embeddings client-side and `upsert`s
   `ids`, `documents` (chunk text), `metadatas` (`Chunk.metadata()`), and
   `embeddings` together. Because embeddings are passed explicitly, Chroma's own
@@ -193,7 +198,7 @@ guarantee, not a post-filter.
 | **Approximate search** | HNSW recall is < 100 % and parameters (`M`, `ef`) are untuned defaults. Fine at the current corpus size (tens of chunks); matters at scale. |
 | **Region filter is exact-match and fragile** | `{"region": "UK"}` must match the stored value byte-for-byte. A typo in `sources.json` (`"uk"`, `"U.K."`) silently removes a source from all regional queries. Only `EU` / `UK` exist; there's no "either" mode (though `None` = unfiltered works). |
 | **Metadata assumed present** | Result construction does `metadata["region"]`, `metadata["title"]`, etc. with no `.get`. A row missing a key would `KeyError`. Collection currently guarantees them, so this is latent. |
-| **Cold start every call** | Each CLI invocation loads PyTorch + the model and re-embeds the query. No warm service, no query-embedding cache. |
+| **Cold start every call** | Each CLI invocation loads the ONNX MiniLM model and re-embeds the query. No warm service, no query-embedding cache. (The Streamlit app amortizes the model load via `@st.cache_resource`.) |
 | **No query processing** | The question is embedded as-is. No lowercasing, expansion, HyDE, or multi-query. User phrasing has to resemble the source phrasing. |
 | **Unpinned model** | `all-MiniLM-L6-v2` is fetched by name, revision unpinned — the upstream artifact could change. Also a network + supply-chain dependency on first run. |
 | **Single mutable collection** | `build` always upserts into the same collection. No snapshot/versioning, so you can't compare two chunking or embedding strategies side by side, and a bad rebuild pollutes the only copy. |

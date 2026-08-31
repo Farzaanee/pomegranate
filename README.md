@@ -19,7 +19,7 @@ phases — see [project-plan.md](project-plan.md).
 
 ## Quick start
 
-Requires **Python 3.13** (pinned in `.python-version`; 3.10+ works). Using
+Requires **Python 3.12** (pinned in `.python-version`; 3.10+ works). Using
 [uv](https://docs.astral.sh/uv/):
 
 ```bash
@@ -27,7 +27,7 @@ uv sync --extra dev                                   # build .venv/, install pr
 uv run pytest -q                                      # offline sanity check
 
 uv run investment-rag collect --pages-per-source 1    # download + clean sources -> data/raw/
-uv run investment-rag build                           # chunk + index into Chroma -> data/chroma/
+uv run investment-rag build                           # chunk + index into Chroma -> data/index/
 uv run investment-rag query "Why does diversification matter?" --region UK
 ```
 
@@ -39,11 +39,18 @@ source? See **[SETUP.md](SETUP.md)** for the full guide and troubleshooting.
 | Stage | Command | What it does |
 | --- | --- | --- |
 | Collect | `investment-rag collect` | Fetches the [`sources.json`](sources.json) allow-list, strips site chrome, writes reviewable JSON to `data/raw/`. Refuses to bypass access controls — blocked sources are reported and skipped. |
-| Build | `investment-rag build` | Splits documents into overlap-preserving chunks and upserts them (with provenance metadata) into persistent local Chroma at `data/chroma/`. |
+| Build | `investment-rag build` | Splits documents into overlap-preserving chunks and upserts them (with provenance metadata) into persistent local Chroma at `data/index/`. |
 | Query | `investment-rag query "<question>" [--region EU\|UK]` | Semantic search over the index; prints each supporting passage with its source, region, and URL. `--region` hard-filters to prevent cross-region retrieval. |
 
-Embeddings use `all-MiniLM-L6-v2` (downloads on first use). `data/` is gitignored
-— the knowledge base is rebuilt locally, never committed.
+Embeddings use `all-MiniLM-L6-v2` via ONNX Runtime — the same model as
+`sentence-transformers` exposes, but with no PyTorch dependency (~450 MB lighter
+to install), so it fits the Streamlit Community Cloud free tier. The ~80 MB ONNX
+weights download on first use and are cached.
+
+The built index in `data/index/` **is committed** so the deployed app opens it
+directly instead of re-embedding the knowledge base on every startup. `data/raw/`
+is committed too; `data/chroma/` (local CLI scratch) is gitignored. Rebuild and
+commit `data/index/` whenever `data/raw/` or the chunking changes.
 
 ## Repository layout
 
@@ -52,7 +59,7 @@ src/investment_rag/
   models.py      SourceDocument / Chunk / SearchResult dataclasses
   collect.py     download + HTML cleaning
   chunking.py    sentence-boundary chunking with overlap
-  retrieval.py   Chroma-backed embed / index / search (+ region filter)
+  retrieval.py   Chroma-backed embed / index / search (+ region filter), ONNX MiniLM
   cli.py         the `investment-rag` collect/build/query commands
 tests/           offline tests for every stage
 sources.json     allow-list of official seed pages

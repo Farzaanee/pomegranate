@@ -5,9 +5,10 @@ is and where it's going, see [README.md](README.md).
 
 ## Prerequisites
 
-- **Python 3.13** — pinned in [`.python-version`](.python-version). 3.10–3.12 also
-  work; avoid pre-release interpreters (no prebuilt wheels for `torch`,
-  `chromadb`, `onnxruntime`).
+- **Python 3.12** — pinned in [`.python-version`](.python-version). 3.10, 3.11 and
+  3.13 also work; avoid pre-release interpreters (no prebuilt wheels for
+  `chromadb`, `onnxruntime`). 3.12 is the pin because it has the widest wheel
+  coverage on Streamlit Community Cloud.
 - **[uv](https://docs.astral.sh/uv/)** (recommended) — a `uv.lock` is committed so
   installs are reproducible. On macOS with Homebrew:
   ```bash
@@ -19,9 +20,9 @@ is and where it's going, see [README.md](README.md).
   ```
   Then restart your shell (the curl installer adds `~/.local/bin` to PATH; or
   `source $HOME/.local/bin/env` for the current session).
-- Roughly **500 MB free disk** and a network connection for the first run — the
-  embedding model (`all-MiniLM-L6-v2`, ~90 MB) and PyTorch download once and are
-  cached.
+- Roughly **150 MB free disk** and a network connection for the first run — the
+  `all-MiniLM-L6-v2` ONNX weights (~80 MB) download once and are cached in
+  `~/.cache/chroma/`. No PyTorch.
 
 Check which Python uv already has:
 
@@ -30,7 +31,7 @@ uv python list --only-installed
 uv python find '>=3.10'      # prints the interpreter uv would use here
 ```
 
-If nothing suitable shows up, `uv python install 3.13` (or just run `uv sync`,
+If nothing suitable shows up, `uv python install 3.12` (or just run `uv sync`,
 which fetches one automatically).
 
 ## Install
@@ -50,7 +51,7 @@ needed), or activate the venv with `source .venv/bin/activate`.
 
 ```bash
 cd /path/to/pomegranate
-python3.13 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -e '.[dev]'
 ```
@@ -77,7 +78,8 @@ Three stages, each a subcommand of `investment-rag`:
 # 1. Download + clean the allow-listed sources into data/raw/*.json
 uv run investment-rag collect --pages-per-source 1
 
-# 2. Chunk those documents and index them into local Chroma at data/chroma/
+# 2. Chunk those documents and index them into local Chroma at data/index/
+#    (commit data/index/ afterwards — the deployed app opens it directly)
 uv run investment-rag build
 
 # 3. Ask a question; prints supporting passages with source, region, and URL
@@ -91,13 +93,15 @@ Useful flags:
 | `collect` | `--sources` | `sources.json` | allow-list of seed pages |
 | `collect` | `--output` | `data/raw` | where cleaned JSON is written |
 | `collect` | `--pages-per-source` | `1` | also follow up to N-1 same-domain links per seed |
-| `build` | `--input` / `--store` | `data/raw` / `data/chroma` | doc source and vector store paths |
+| `build` | `--input` / `--store` | `data/raw` / `data/index` | doc source and vector store paths |
 | `query` | `--region` | *(none)* | `EU` or `UK`; hard-filters cross-region results |
 | `query` | `--limit` | `4` | number of passages to return |
-| `query` | `--store` | `data/chroma` | vector store to search |
+| `query` | `--store` | `data/index` | vector store to search |
 
-`data/raw/` and `data/chroma/` are gitignored — the knowledge base is rebuilt
-locally, never committed.
+`data/raw/` and `data/index/` **are committed** so the deployed Streamlit app
+opens a prebuilt index instead of re-embedding on startup. `data/chroma/` is a
+gitignored scratch path for ad-hoc local builds. Rebuild and commit `data/index/`
+whenever `data/raw/` or the chunking logic changes.
 
 ## Configuration
 
@@ -118,12 +122,12 @@ publishers — the collector refuses to work around access controls. Replace tha
 entry in `sources.json` with an accessible official page and re-run `collect`.
 MoneyHelper is the most reliable of the three defaults.
 
-**First `build` or `query` hangs / downloads a lot.** It's fetching PyTorch and
-the `all-MiniLM-L6-v2` weights. Subsequent runs use the cache
-(`~/.cache/huggingface`, `~/.cache/torch`).
+**First `build` or `query` downloads ~80 MB.** It's fetching the
+`all-MiniLM-L6-v2` ONNX weights. Subsequent runs use the cache
+(`~/.cache/chroma/onnx_models/`). No PyTorch is involved.
 
 **`TypeError: unsupported operand type(s) for |` on import.** You're on Python
-3.9. Use 3.10+ (`uv python install 3.13`).
+3.9. Use 3.10+ (`uv python install 3.12`).
 
 **Chroma**
 An open-source vector database used for storing and searching embeddings, often 
@@ -136,5 +140,6 @@ tests pass embeddings explicitly. If a future Chroma version instantiates its
 default embedding function eagerly, open an issue / ping so the collection can be
 created with an explicit no-op embedding function.
 
-**Start over.** `rm -rf data/` wipes collected docs and the vector store;
-`rm -rf .venv && uv sync --extra dev` rebuilds the environment.
+**Start over.** `rm -rf data/chroma/` clears the local scratch store (rerun
+`investment-rag build` to regenerate `data/index/`); `rm -rf .venv && uv sync
+--extra dev` rebuilds the environment.
