@@ -31,10 +31,63 @@ from investment_rag.retrieval import Retriever
 
 RAW_DIR = Path(__file__).parent / "data" / "raw"
 INDEX_DIR = Path(__file__).parent / "data" / "index"
+LOGO_PATH = Path(__file__).parent / "images" / "pomegranate.png"
 DISCLAIMER = (
     "Educational only — not regulated financial advice. Passages are retrieved "
     "verbatim from official public sources and are not investment recommendations."
 )
+
+# Polish that the [theme] block in .streamlit/config.toml can't express on its
+# own: an editorial heading colour, a gold/crimson accent rule, a themed
+# disclaimer banner, and seed-dot bullets for the sidebar source list. Palette
+# matches images/pomegrenate.png.
+POMEGRANATE_CSS = """
+<style>
+h1 { font-weight: 600; letter-spacing: -0.015em; }
+
+hr.pom-rule {
+    height: 4px;
+    border: 0;
+    margin: 0.35rem 0 1.1rem;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #B31942 0%, #B31942 22%, #C9A24B 55%, rgba(201,162,75,0) 100%);
+}
+
+.pom-disclaimer {
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: var(--text-color, #5B4636);
+    background: var(--secondary-background-color, #F1E7CE);
+    border-left: 3px solid var(--primary-color, #B31942);
+    border-radius: 6px;
+    padding: 0.6rem 0.85rem;
+    opacity: 0.92;
+}
+
+hr:not(.pom-rule) { border-color: #E3D6B8 !important; }
+
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] li {
+    list-style: none;
+    position: relative;
+    padding-left: 1.1rem;
+}
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.5em;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #B31942;
+}
+</style>
+"""
+
+
+def inject_theme() -> None:
+    """Inject the pomegranate CSS polish that the ``config.toml`` theme can't express."""
+    st.markdown(POMEGRANATE_CSS, unsafe_allow_html=True)
 
 
 def load_documents(directory: Path) -> list[SourceDocument]:
@@ -60,16 +113,16 @@ def load_retriever() -> Retriever:
 
 
 def render_result(result: SearchResult) -> None:
-    """Render one retrieved passage with its provenance and similarity score."""
+    """Render one retrieved passage as a card with its provenance and similarity score."""
     chunk = result.chunk
-    st.markdown(
-        f"**{chunk.source_name}** · {chunk.region} · "
-        f"cosine distance `{result.distance:.3f}`"
-    )
-    st.markdown(f"*{chunk.title}*")
-    st.write(chunk.text)
-    st.markdown(f"[{chunk.url}]({chunk.url})")
-    st.divider()
+    with st.container(border=True):
+        st.markdown(
+            f"**{chunk.source_name}** · {chunk.region} · "
+            f"cosine distance `{result.distance:.3f}`"
+        )
+        st.markdown(f"*{chunk.title}*")
+        st.write(chunk.text)
+        st.markdown(f"[{chunk.url}]({chunk.url})")
 
 
 def has_api_key() -> bool:
@@ -97,7 +150,8 @@ def load_reasoning_agent(_retriever: Retriever) -> ReasoningAgent:
 def render_recommendation(recommendation: Recommendation) -> None:
     """Render a grounded recommendation with its plain-language reasoning and citations."""
     st.subheader("Recommendation")
-    st.write(recommendation.summary)
+    with st.container(border=True):
+        st.write(recommendation.summary)
     st.markdown("**Reasoning**")
     for step in recommendation.reasoning_steps:
         st.markdown(f"- {step}")
@@ -173,9 +227,21 @@ def render_recommendation_mode(retriever: Retriever) -> None:
 
 def main() -> None:
     """Draw the sidebar and run whichever mode (retrieval or recommendation) is selected."""
-    st.set_page_config(page_title="Grounded Investment RAG", page_icon="\U0001f4c8")
-    st.title("\U0001f4c8 Grounded Investment Research")
-    st.caption(DISCLAIMER)
+    st.set_page_config(
+        page_title="Grounded Investment Research",
+        page_icon=str(LOGO_PATH),
+        layout="centered",
+    )
+    st.logo(str(LOGO_PATH), size="large")
+    inject_theme()
+
+    header_art, header_text = st.columns([1, 3], vertical_alignment="center")
+    with header_art:
+        st.image(str(LOGO_PATH), width=140)
+    with header_text:
+        st.title("Grounded Investment Research")
+    st.markdown('<hr class="pom-rule" />', unsafe_allow_html=True)
+    st.markdown(f'<div class="pom-disclaimer">{DISCLAIMER}</div>', unsafe_allow_html=True)
 
     documents = load_documents(RAW_DIR)
     sources = sorted({(document.source_name, document.region) for document in documents})

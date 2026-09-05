@@ -1,0 +1,41 @@
+# Pomegranate theme.
+# Palette lifted from images/pomegrenate.png: crimson arils, gold pith,
+# cream paper, dark seed-brown ink.
+
+[theme]
+base = "light"
+primaryColor = "#B31942"
+backgroundColor = "#FAF7EF"
+secondaryBackgroundColor = "#EFE7D2"
+textColor = "#2E2320"
+linkColor = "#9A2C46"
+borderColor = "#E0D2B4"
+codeBackgroundColor = "#F0E6CE"
+codeTextColor = "#7A1530"
+font = "sans-serif"
+headingFont = "Fraunces:https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&display=swap"
+baseRadius = "large"
+showWidgetBorder = true
+
+[theme.sidebar]
+backgroundColor = "#EFE6D0"
+secondaryBackgroundColor = "#E3D6B7"
+primaryColor = "#B31942"
+textColor = "#3A2C22"
+borderColor = "#D5C299"
+
+[theme.dark]
+primaryColor = "#E8617F"
+backgroundColor = "#241016"
+secondaryBackgroundColor = "#33161E"
+textColor = "#F3E7D8"
+linkColor = "#F0A9B8"
+borderColor = "#4A2630"
+codeBackgroundColor = "#33161E"
+codeTextColor = "#F0A9B8"
+
+[theme.dark.sidebar]
+backgroundColor = "#2E121A"
+secondaryBackgroundColor = "#3D1922"
+textColor = "#F3E7D8"
+borderColor = "#4A2630"
