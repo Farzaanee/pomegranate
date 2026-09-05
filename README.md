@@ -19,6 +19,10 @@ retrieved evidence to produce a citation-backed recommendation. Full
 multi-jurisdiction routing and evaluation come in later phases — see
 [project-plan.md](src/docs/project-plan.md).
 
+**Architecture:** [architecture.md](src/docs/architecture.md) has the full
+system diagram (how Phase 1 and Phase 2 share one retrieval mechanism) and a
+module-by-module reference.
+
 ## Quick start
 
 Requires **Python 3.12** (pinned in `.python-version`; 3.10+ works). Using
@@ -68,7 +72,7 @@ src/investment_rag/
   cli.py         the `investment-rag` collect/build/query/advise commands
 tests/           offline tests for every stage (fakes stand in for Chroma + Claude)
 sources.json     allow-list of official seed pages
-src/docs/        project-plan.md, SETUP.md, and design-notes docs
+src/docs/        architecture.md, project-plan.md, SETUP.md, and design-notes docs
 ```
 
 ## Development

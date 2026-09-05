@@ -51,7 +51,8 @@ The test suite validates cleaning, chunking, and required provenance metadata of
 
 ## Phase 2 implementation notes
 
-Implements the Phase 2 plan below on top of the Phase 1 pipeline:
+See [architecture.md](architecture.md) for the system diagram and request-flow
+walkthrough. Implements the Phase 2 plan below on top of the Phase 1 pipeline:
 
 - `src/investment_rag/profile.py` — the `UserProfile` schema (income, investable amount, goal, timeline, risk tolerance, region) and `retrieval_queries()`, which turns a profile into the sub-queries used to gather evidence (horizon, risk tolerance, fees, goal, and a region-specific query — ISA vs. general account for UK, MiFID II protections for EU).
 - `src/investment_rag/reasoning.py` — `gather_evidence` runs those queries through the Phase 1 `Retriever` with `region` locked to the profile's region, dedupes by chunk id, and labels passages `"1"`, `"2"`, … for citation. `ClaudeRecommendationLLM` calls Claude (`claude-opus-5` by default) with `output_config.format` (a JSON schema), so the response is a validated `{summary, reasoning_steps, considerations, citations}` object rather than free text. `parse_recommendation` then resolves each citation's label against the actual retrieved passages and **drops any that don't match** — the model can invent a label, but a fabricated citation cannot survive into the returned `Recommendation`. If none survive, it raises `ReasoningError` rather than returning an ungrounded answer.
