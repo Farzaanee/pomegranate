@@ -9,6 +9,7 @@ description = "A local, source-aware RAG foundation for investment education."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "anthropic>=1.4.0",
     "beautifulsoup4>=4.12",
     "chromadb>=0.5",
     "requests>=2.31",

@@ -43,8 +43,23 @@ The `all-MiniLM-L6-v2` ONNX weights (~80 MB, no PyTorch) download on first use a
 2. `investment-rag collect` downloads seed pages and optionally a limited number of same-domain links, then saves cleaned documents as reviewable JSON.
 3. `investment-rag build` creates overlap-preserving chunks and upserts them into persistent Chroma storage.
 4. `investment-rag query` performs semantic retrieval and prints the supporting text with source and URL. Use `--region EU` or `--region UK` to prevent cross-region retrieval.
+5. `investment-rag advise` (Phase 2) derives evidence queries from a user profile, retrieves region-scoped passages via the same retriever, and asks Claude to produce a plain-language, cited recommendation — see the Phase 2 section below.
 
 The test suite validates cleaning, chunking, and required provenance metadata offline. A successful sample query that returns a relevant passage carrying its official source, region, and URL meets the Phase 1 retrieval criterion.
+
+---
+
+## Phase 2 implementation notes
+
+Implements the Phase 2 plan below on top of the Phase 1 pipeline:
+
+- `src/investment_rag/profile.py` — the `UserProfile` schema (income, investable amount, goal, timeline, risk tolerance, region) and `retrieval_queries()`, which turns a profile into the sub-queries used to gather evidence (horizon, risk tolerance, fees, goal, and a region-specific query — ISA vs. general account for UK, MiFID II protections for EU).
+- `src/investment_rag/reasoning.py` — `gather_evidence` runs those queries through the Phase 1 `Retriever` with `region` locked to the profile's region, dedupes by chunk id, and labels passages `"1"`, `"2"`, … for citation. `ClaudeRecommendationLLM` calls Claude (`claude-opus-5` by default) with `output_config.format` (a JSON schema), so the response is a validated `{summary, reasoning_steps, considerations, citations}` object rather than free text. `parse_recommendation` then resolves each citation's label against the actual retrieved passages and **drops any that don't match** — the model can invent a label, but a fabricated citation cannot survive into the returned `Recommendation`. If none survive, it raises `ReasoningError` rather than returning an ungrounded answer.
+- `ReasoningAgent.run(profile)` ties it together: gather evidence → prompt → validate → return.
+- Exposed via `investment-rag advise` (CLI) and the "Grounded recommendation" mode in `app.py` (Streamlit), gated on an `ANTHROPIC_API_KEY` being configured.
+- `tests/test_profile.py` and `tests/test_reasoning.py` cover validation, query derivation, evidence dedupe/region-scoping, and citation validation — all against fakes, so the suite stays offline and free.
+
+**Acceptance criterion met:** given a sample profile (e.g. UK, medium risk, 15-year horizon, retirement goal), `advise` returns a coherent, plain-language recommendation whose citations resolve to real passages from region-matched official sources — verified end-to-end against the committed Phase 1 index.
 
 ---
 

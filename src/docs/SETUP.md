@@ -1,7 +1,8 @@
 # Setup
 
-Getting the Phase 1 knowledge-base pipeline running locally. For what the project
-is and where it's going, see [README.md](README.md).
+Getting the knowledge-base pipeline (Phase 1) and reasoning agent (Phase 2)
+running locally. For what the project is and where it's going, see
+[README.md](README.md).
 
 ## Prerequisites
 
@@ -69,6 +70,9 @@ All tests run **offline** (no network, no model download):
 - `tests/test_retrieval.py` — search wiring + region filter (fully mocked)
 - `tests/test_integration.py` — real `chunk_document` output and real on-disk
   Chroma indexing/retrieval with a deterministic fake embedder
+- `tests/test_profile.py` — user profile validation and query derivation
+- `tests/test_reasoning.py` — evidence gathering, citation validation, and the
+  reasoning agent, all with a fake LLM (no API key or network needed)
 
 ## Run the pipeline
 
@@ -84,6 +88,11 @@ uv run investment-rag build
 
 # 3. Ask a question; prints supporting passages with source, region, and URL
 uv run investment-rag query "Why does diversification matter when investing?" --region UK
+
+# 4. Phase 2: get a grounded, cited recommendation for a user profile (needs
+#    ANTHROPIC_API_KEY — see Configuration below)
+uv run investment-rag advise --income 2500 --amount 3000 --goal retirement \
+    --timeline 15 --risk medium --region UK
 ```
 
 Useful flags:
@@ -97,6 +106,12 @@ Useful flags:
 | `query` | `--region` | *(none)* | `EU` or `UK`; hard-filters cross-region results |
 | `query` | `--limit` | `4` | number of passages to return |
 | `query` | `--store` | `data/index` | vector store to search |
+| `advise` | `--income` / `--amount` | *(required)* | monthly income / amount available to invest |
+| `advise` | `--goal` | *(required)* | `retirement`, `house_deposit`, `general_growth`, or `emergency_fund` |
+| `advise` | `--timeline` | *(required)* | investing horizon in years |
+| `advise` | `--risk` | *(required)* | `low`, `medium`, or `high` |
+| `advise` | `--region` | *(required)* | `EU` or `UK`; also scopes evidence retrieval |
+| `advise` | `--model` | `claude-opus-5` | Anthropic model used for the reasoning step |
 
 `data/raw/` and `data/index/` **are committed** so the deployed Streamlit app
 opens a prebuilt index instead of re-embedding on startup. `data/chroma/` is a
@@ -115,6 +130,22 @@ whenever `data/raw/` or the chunking logic changes.
 Before raising `--pages-per-source`, check each publisher's terms and robots
 policy and eyeball the collected JSON in `data/raw/`.
 
+### Anthropic API key (Phase 2 only)
+
+`investment-rag advise` and the app's "Grounded recommendation" mode call
+Claude to turn retrieved evidence into a cited recommendation
+(`investment_rag.reasoning.ClaudeRecommendationLLM`). Retrieval and search
+(`collect` / `build` / `query`) never need this — only `advise` does.
+
+- **Locally:** `export ANTHROPIC_API_KEY=sk-ant-...` (or run `ant auth login`,
+  which the SDK also picks up automatically).
+- **On Streamlit Community Cloud:** add `ANTHROPIC_API_KEY = "sk-ant-..."` to the
+  app's Secrets in the dashboard; [app.py](app.py) reads it from `st.secrets` and
+  exports it into the environment before creating the agent.
+- **Model/cost:** defaults to `claude-opus-5`. Pass `--model claude-sonnet-5` (CLI)
+  or set `model=` on `ClaudeRecommendationLLM` (app) for a cheaper model — that
+  trade-off is yours to make, not the default.
+
 ## Troubleshooting
 
 **`collect` reports a source was skipped (403 Forbidden).** Expected for some
@@ -128,6 +159,13 @@ MoneyHelper is the most reliable of the three defaults.
 
 **`TypeError: unsupported operand type(s) for |` on import.** You're on Python
 3.9. Use 3.10+ (`uv python install 3.12`).
+
+**`advise` raises `anthropic.AuthenticationError` or exits complaining about a
+missing key.** Set `ANTHROPIC_API_KEY` — see *Anthropic API key* above.
+
+**`advise` raises `ReasoningError: No evidence retrieved for this profile's
+region`.** The index has no chunks for that region — run `collect` + `build`
+for it, or double check `--region` matches what's indexed.
 
 **Chroma**
 An open-source vector database used for storing and searching embeddings, often 

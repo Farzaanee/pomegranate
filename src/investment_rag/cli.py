@@ -1,4 +1,4 @@
-"""Command-line entry points for the Phase 1 RAG workflow."""
+"""Command-line entry points for the RAG pipeline (Phase 1) and reasoning agent (Phase 2)."""
 
 import argparse
 import json
@@ -7,6 +7,8 @@ from pathlib import Path
 from .chunking import chunk_documents
 from .collect import CollectionError, collect_source, load_sources, save_documents
 from .models import SourceDocument
+from .profile import GOALS, RISK_TOLERANCES, UserProfile
+from .reasoning import DISCLAIMER, ClaudeRecommendationLLM, ReasoningAgent
 from .retrieval import Retriever
 
 
@@ -29,6 +31,15 @@ def main() -> None:
     query_parser.add_argument("--store", default="data/index")
     query_parser.add_argument("--region", choices=["EU", "UK"])
     query_parser.add_argument("--limit", type=int, default=4)
+    advise_parser = commands.add_parser("advise", help="Produce a grounded, cited recommendation for a user profile.")
+    advise_parser.add_argument("--income", type=float, required=True, help="Monthly income, local currency.")
+    advise_parser.add_argument("--amount", type=float, required=True, help="Amount available to invest.")
+    advise_parser.add_argument("--goal", choices=GOALS, required=True)
+    advise_parser.add_argument("--timeline", type=int, required=True, help="Investing horizon in years.")
+    advise_parser.add_argument("--risk", choices=RISK_TOLERANCES, required=True, dest="risk_tolerance")
+    advise_parser.add_argument("--region", choices=["EU", "UK"], required=True)
+    advise_parser.add_argument("--store", default="data/index")
+    advise_parser.add_argument("--model", default="claude-opus-5", help="Anthropic model for the reasoning step.")
     args = parser.parse_args()
 
     if args.command == "collect":
@@ -49,9 +60,23 @@ def main() -> None:
         chunks = chunk_documents(_load_documents(args.input))
         Retriever(args.store).index(chunks)
         print(f"Indexed {len(chunks)} chunks in {args.store}.")
-    else:
+    elif args.command == "query":
         for item in Retriever(args.store).search(args.question, args.limit, args.region):
             print(f"[{item.chunk.source_name} | {item.chunk.region} | {item.chunk.url}]\n{item.chunk.text}\n")
+    else:
+        profile = UserProfile(args.income, args.amount, args.goal, args.timeline, args.risk_tolerance, args.region)
+        agent = ReasoningAgent(Retriever(args.store), ClaudeRecommendationLLM(model=args.model))
+        recommendation = agent.run(profile)
+        print(f"{DISCLAIMER}\n")
+        print(f"{recommendation.summary}\n")
+        for step in recommendation.reasoning_steps:
+            print(f"- {step}")
+        for consideration in recommendation.considerations:
+            print(f"\nNote: {consideration}")
+        print("\nSources:")
+        for citation in recommendation.citations:
+            print(f"  [{citation.label}] {citation.source_name} ({citation.region}) — {citation.url}")
+            print(f'      "{citation.quote}"')
 
 
 if __name__ == "__main__":

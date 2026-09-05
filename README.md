@@ -13,9 +13,11 @@ trusted public sources — ESMA's Investor Corner (EU), MoneyHelper (UK), and FC
 InvestSmart (UK). Every retrieved passage keeps its source name, region, URL,
 title, and chunk index so answers stay traceable.
 
-**Status: Phase 1 (Foundations).** Local knowledge base + basic RAG retrieval.
-The reasoning agent, multi-jurisdiction routing, and evaluation come in later
-phases — see [project-plan.md](project-plan.md).
+**Status: Phase 2 (Reasoning Layer).** Phase 1's local knowledge base + RAG
+retrieval, plus an agentic reasoning layer that combines a user profile with
+retrieved evidence to produce a citation-backed recommendation. Full
+multi-jurisdiction routing and evaluation come in later phases — see
+[project-plan.md](src/docs/project-plan.md).
 
 ## Quick start
 
@@ -32,7 +34,7 @@ uv run investment-rag query "Why does diversification matter?" --region UK
 ```
 
 Prefer plain `venv`, need to pick a different Python, or hit a `403` from a
-source? See **[SETUP.md](SETUP.md)** for the full guide and troubleshooting.
+source? See **[SETUP.md](src/docs/SETUP.md)** for the full guide and troubleshooting.
 
 ## How it works
 
@@ -41,6 +43,7 @@ source? See **[SETUP.md](SETUP.md)** for the full guide and troubleshooting.
 | Collect | `investment-rag collect` | Fetches the [`sources.json`](sources.json) allow-list, strips site chrome, writes reviewable JSON to `data/raw/`. Refuses to bypass access controls — blocked sources are reported and skipped. |
 | Build | `investment-rag build` | Splits documents into overlap-preserving chunks and upserts them (with provenance metadata) into persistent local Chroma at `data/index/`. |
 | Query | `investment-rag query "<question>" [--region EU\|UK]` | Semantic search over the index; prints each supporting passage with its source, region, and URL. `--region` hard-filters to prevent cross-region retrieval. |
+| Advise | `investment-rag advise --income ... --amount ... --goal ... --timeline ... --risk ... --region EU\|UK` | **Phase 2.** Derives evidence queries from the profile, retrieves region-scoped passages, and asks Claude for a plain-language, cited recommendation. Citations that don't match a retrieved passage are dropped, not trusted. Needs `ANTHROPIC_API_KEY` — see [SETUP.md](src/docs/SETUP.md). |
 
 Embeddings use `all-MiniLM-L6-v2` via ONNX Runtime — the same model as
 `sentence-transformers` exposes, but with no PyTorch dependency (~450 MB lighter
@@ -60,10 +63,12 @@ src/investment_rag/
   collect.py     download + HTML cleaning
   chunking.py    sentence-boundary chunking with overlap
   retrieval.py   Chroma-backed embed / index / search (+ region filter), ONNX MiniLM
-  cli.py         the `investment-rag` collect/build/query commands
-tests/           offline tests for every stage
+  profile.py     UserProfile schema + the retrieval queries it implies (Phase 2)
+  reasoning.py   evidence gathering, Claude call, citation validation (Phase 2)
+  cli.py         the `investment-rag` collect/build/query/advise commands
+tests/           offline tests for every stage (fakes stand in for Chroma + Claude)
 sources.json     allow-list of official seed pages
-project-plan.md  full project brief and phase-by-phase plan
+src/docs/        project-plan.md, SETUP.md, and design-notes docs
 ```
 
 ## Development
@@ -73,5 +78,9 @@ uv run pytest -q          # all tests run offline (no network, no model download
 ```
 
 `tests/test_integration.py` exercises the real chunking logic and a real on-disk
-Chroma store; the other test modules cover cleaning, provenance, and search
-wiring.
+Chroma store; the other test modules cover cleaning, provenance, search wiring,
+user-profile validation, and the reasoning agent (with a fake LLM, so no API
+key or network is needed to run the suite).
+
+Agent-driven work sessions on this repo (model, effort, tokens, cost, wall
+time) are tracked in [performance-log.md](src/docs/performance-log.md).
