@@ -163,12 +163,13 @@ def render_recommendation_mode(retriever: Retriever) -> None:
         col1, col2 = st.columns(2)
         with col1:
             region = st.selectbox("Region", ["UK", "EU"])
-            goal = st.selectbox("Goal", GOALS, format_func=lambda value: value.replace("_", " ").title())
+            goal = st.selectbox("Goal", GOALS, index=GOALS.index("general_growth"),
+                                format_func=lambda value: value.replace("_", " ").title())
             timeline_years = st.number_input("Timeline (years)", min_value=1, max_value=50, value=10)
         with col2:
-            risk_tolerance = st.selectbox("Risk tolerance", RISK_TOLERANCES)
-            monthly_income = st.number_input("Monthly income", min_value=0.0, value=2000.0, step=100.0)
-            investable_amount = st.number_input("Amount available to invest", min_value=0.0, value=1000.0, step=100.0)
+            risk_tolerance = st.selectbox("Risk tolerance", RISK_TOLERANCES, index=RISK_TOLERANCES.index("high"))
+            monthly_income = st.number_input("Monthly income", min_value=0, value=6000, step=100)
+            investable_amount = st.number_input("Amount available to invest", min_value=0, value=1000, step=100)
         submitted = st.form_submit_button("Get a grounded recommendation")
 
     if not submitted:
