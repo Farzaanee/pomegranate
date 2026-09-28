@@ -87,16 +87,24 @@ to a real, region-matched source.
    risk tolerance, fees, goal, and one region-specific query (ISA vs. general
    account for UK, MiFID II protections for EU).
 3. `gather_evidence()` runs each through `Retriever.search(region=profile.region)`,
-   dedupes by chunk id, and labels the survivors `1, 2, 3, …`.
+   dedupes by chunk id, labels the survivors `1, 2, 3, …`, and stops once
+   `MAX_EVIDENCE_PASSAGES` (10) unique passages are collected, so prompt size
+   stays bounded regardless of how many sub-queries still have budget left.
 4. `build_user_prompt()` renders the profile — explicitly framed as synthetic
-   demo data — plus the numbered passages, and asks for suitability reasoning
-   across vehicle *types* rather than a single pick or an amount to invest.
-   `ClaudeRecommendationLLM.recommend()` sends it to Claude with a JSON-schema
+   demo data — plus the numbered passages (each truncated to
+   `MAX_PASSAGE_CHARS`), and asks for suitability reasoning across vehicle
+   *types* rather than a single pick or an amount to invest.
+   `ClaudeRecommendationLLM.recommend()` sends it to Claude (`claude-sonnet-5`
+   by default, chosen for latency over `claude-opus-5`) with a JSON-schema
    output constraint, so the reply is a structured
    `{summary, suitable_options, reasoning, risks, caveats, citations}` object
    rather than free text. Framing the task as education over synthetic profiles
    is what keeps Claude from softening or declining the response the way it does
-   when asked for direct, personalized investment instructions.
+   when asked for direct, personalized investment instructions. The system
+   prompt also caps each array (at most 4 suitable options, 5 reasoning steps,
+   5 risks, 5 caveats, 8 citations); Anthropic's `json_schema` format doesn't
+   support `maxItems`, so `parse_recommendation()` re-enforces the same caps by
+   slicing the payload.
 5. `parse_recommendation()` resolves every citation label against the passages
    actually retrieved. Invented labels are dropped; if none remain, it raises
    `ReasoningError` rather than return an ungrounded answer.

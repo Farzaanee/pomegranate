@@ -111,7 +111,7 @@ Useful flags:
 | `advise` | `--timeline` | *(required)* | investing horizon in years |
 | `advise` | `--risk` | *(required)* | `low`, `medium`, or `high` |
 | `advise` | `--region` | *(required)* | `EU` or `UK`; also scopes evidence retrieval |
-| `advise` | `--model` | `claude-opus-5` | Anthropic model used for the reasoning step |
+| `advise` | `--model` | `claude-sonnet-5` | Anthropic model used for the reasoning step |
 
 `data/raw/` and `data/index/` **are committed** so the deployed Streamlit app
 opens a prebuilt index instead of re-embedding on startup. `data/chroma/` is a
@@ -142,9 +142,9 @@ Claude to turn retrieved evidence into a cited recommendation
 - **On Streamlit Community Cloud:** add `ANTHROPIC_API_KEY = "sk-ant-..."` to the
   app's Secrets in the dashboard; [app.py](app.py) reads it from `st.secrets` and
   exports it into the environment before creating the agent.
-- **Model/cost:** defaults to `claude-opus-5`. Pass `--model claude-sonnet-5` (CLI)
-  or set `model=` on `ClaudeRecommendationLLM` (app) for a cheaper model — that
-  trade-off is yours to make, not the default.
+- **Model/cost:** defaults to `claude-sonnet-5` for latency. Pass `--model claude-opus-5` (CLI)
+  or set `model=` on `ClaudeRecommendationLLM` (app) for deeper reasoning at the
+  cost of speed — that trade-off is yours to make, not the default.
 
 ## Troubleshooting
 
