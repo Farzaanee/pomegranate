@@ -39,7 +39,7 @@ def main() -> None:
     advise_parser.add_argument("--risk", choices=RISK_TOLERANCES, required=True, dest="risk_tolerance")
     advise_parser.add_argument("--region", choices=["EU", "UK"], required=True)
     advise_parser.add_argument("--store", default="data/index")
-    advise_parser.add_argument("--model", default="claude-opus-5", help="Anthropic model for the reasoning step.")
+    advise_parser.add_argument("--model", default="claude-sonnet-5", help="Anthropic model for the reasoning step.")
     args = parser.parse_args()
 
     if args.command == "collect":

@@ -41,8 +41,19 @@ caveats (fees, existing debt, emergency savings, hype) a reader should weigh,
 and include this line verbatim as the final caveat:
 
 "{DISCLAIMER}"
+Be concise: at most 4 suitable options, 5 reasoning steps, 5 risks, 5 caveats,
+and 8 citations.
 """
 
+# Caps keep the model's completion (and thus latency) bounded; raise if outputs feel truncated.
+MAX_SUITABLE_OPTIONS = 4
+MAX_REASONING_STEPS = 5
+MAX_RISKS = 5
+MAX_CAVEATS = 5
+MAX_CITATIONS = 8
+
+# Anthropic's json_schema output format rejects maxItems, so counts are capped in the
+# system prompt and enforced again by slicing in parse_recommendation.
 RECOMMENDATION_SCHEMA: dict[str, object] = {
     "type": "object",
     "properties": {
@@ -139,14 +150,14 @@ class RecommendationLLM(Protocol):
 class ClaudeRecommendationLLM:
     """Calls Claude with a JSON-schema output constraint for the recommendation.
 
-    Defaults to ``claude-opus-5`` for reasoning quality; pass ``model`` to use a
-    cheaper model such as ``claude-sonnet-5`` if you want to trade quality for
-    cost — that trade-off is the deployer's call, not this class's default.
+    Defaults to ``claude-sonnet-5`` for latency; pass ``model`` to use
+    ``claude-opus-5`` if you want to trade speed for reasoning quality — that
+    trade-off is the deployer's call, not this class's default.
     """
 
     def __init__(
         self,
-        model: str = "claude-opus-5",
+        model: str = "claude-sonnet-5",
         client: anthropic.Anthropic | None = None,
         api_key: str | None = None,
     ) -> None:
@@ -164,7 +175,7 @@ class ClaudeRecommendationLLM:
         """Call Claude and parse its schema-constrained JSON response."""
         response = self._client.messages.create(
             model=self.model,
-            max_tokens=8000,
+            max_tokens=4000,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
             output_config={"format": {"type": "json_schema", "schema": RECOMMENDATION_SCHEMA}},
@@ -173,20 +184,38 @@ class ClaudeRecommendationLLM:
         return json.loads(text)
 
 
+# Caps the evidence sent to the LLM so prompt size (and prefill time) stays bounded.
+MAX_EVIDENCE_PASSAGES = 10
+# Chunk text is truncated in the prompt only; citations still show the full quote to the user.
+MAX_PASSAGE_CHARS = 600
+
+
 def gather_evidence(retriever: Retriever, profile: UserProfile, per_query_limit: int = 3) -> list[EvidencePassage]:
     """Run the profile's derived queries and return deduped, sequentially labeled passages."""
     seen: dict[str, EvidencePassage] = {}
     for query in profile.retrieval_queries():
+        if len(seen) >= MAX_EVIDENCE_PASSAGES:
+            break
         for result in retriever.search(query, limit=per_query_limit, region=profile.region):
             if result.chunk.id not in seen:
                 seen[result.chunk.id] = EvidencePassage(str(len(seen) + 1), result.chunk)
+            if len(seen) >= MAX_EVIDENCE_PASSAGES:
+                break
     return list(seen.values())
+
+
+def _truncate(text: str, max_chars: int) -> str:
+    """Cut ``text`` to ``max_chars``, breaking on a word boundary where possible."""
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars].rsplit(" ", 1)[0] + "…"
 
 
 def build_user_prompt(profile: UserProfile, evidence: list[EvidencePassage]) -> str:
     """Render the synthetic profile and numbered evidence passages into the user turn."""
     passages = "\n\n".join(
-        f"[{item.label}] {item.chunk.source_name} ({item.chunk.region}): {item.chunk.text}"
+        f"[{item.label}] {item.chunk.source_name} ({item.chunk.region}): "
+        f"{_truncate(item.chunk.text, MAX_PASSAGE_CHARS)}"
         for item in evidence
     )
     return (
@@ -216,7 +245,7 @@ def _resolve_options(payload: dict[str, object], valid_labels: set[str]) -> list
             tradeoffs=raw.get("tradeoffs", ""),
             citation_labels=[label for label in raw.get("citation_labels", []) if label in valid_labels],
         )
-        for raw in payload.get("suitable_options", [])
+        for raw in payload.get("suitable_options", [])[:MAX_SUITABLE_OPTIONS]
     ]
 
 
@@ -231,7 +260,7 @@ def parse_recommendation(payload: dict[str, object], evidence: list[EvidencePass
     """
     by_label = {item.label: item.chunk for item in evidence}
     citations = []
-    for raw in payload.get("citations", []):
+    for raw in payload.get("citations", [])[:MAX_CITATIONS]:
         chunk = by_label.get(raw.get("label"))
         if chunk is not None:
             citations.append(Citation(raw["label"], chunk.source_name, chunk.region, chunk.url, chunk.title,
@@ -242,9 +271,9 @@ def parse_recommendation(payload: dict[str, object], evidence: list[EvidencePass
     return Recommendation(
         summary=payload["summary"],
         suitable_options=_resolve_options(payload, set(by_label)),
-        reasoning=list(payload.get("reasoning", [])),
-        risks=list(payload.get("risks", [])),
-        caveats=[*caveats, DISCLAIMER],
+        reasoning=list(payload.get("reasoning", []))[:MAX_REASONING_STEPS],
+        risks=list(payload.get("risks", []))[:MAX_RISKS],
+        caveats=[*caveats[: MAX_CAVEATS - 1], DISCLAIMER],
         citations=citations,
     )
 
