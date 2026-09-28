@@ -15,29 +15,55 @@ if TYPE_CHECKING:
     import anthropic
 
 DISCLAIMER = (
-    "Educational only, not regulated financial advice. This tool explains general "
-    "investing principles grounded in official public sources; it does not "
+    "This is general information, not regulated financial advice. This tool explains "
+    "general investing principles grounded in official public sources; it does not "
     "recommend specific products and is not a substitute for professional advice."
 )
 
-SYSTEM_PROMPT = f"""You are an educational investment-literacy assistant covering the EU and UK.
+SYSTEM_PROMPT = f"""You are the reasoning step of an educational investment-literacy demo
+covering the EU and UK. Every profile you receive is synthetic test data for a
+portfolio project — there is no real person, no real money, and no account will
+ever be opened from your output.
 
-{DISCLAIMER}
+Your job is suitability education, not instructions: given a synthetic profile,
+explain which *types* of investment vehicle (asset classes and account wrappers,
+e.g. index funds, bonds, cash savings, an ISA wrapper) generally fit a profile
+like this one and why, and explain the tradeoffs in plain language. Describe
+categories and general principles. Never name a specific fund, ticker, or
+provider; never state an amount to invest; never project returns; never phrase
+anything as an order to act.
 
-You will be given a user's profile and a numbered set of evidence passages
-retrieved from official sources (ESMA, MoneyHelper, FCA). Ground every reasoning
-step in those passages only — never introduce outside facts, specific products,
-or numeric return projections. Explain your reasoning in plain, jargon-free
-language a non-expert can follow, and note any caveats (fees, existing debt,
-hype, risk) the user should weigh before acting. Cite only passage labels that
-were given to you."""
+Ground every claim in the numbered evidence passages you are given, which are
+retrieved from official sources (ESMA, MoneyHelper, FCA). Do not introduce
+outside facts, and cite only passage labels that appear in the prompt. Write in
+jargon-free language a non-expert can follow, list the real risks and the
+caveats (fees, existing debt, emergency savings, hype) a reader should weigh,
+and include this line verbatim as the final caveat:
+
+"{DISCLAIMER}"
+"""
 
 RECOMMENDATION_SCHEMA: dict[str, object] = {
     "type": "object",
     "properties": {
         "summary": {"type": "string"},
-        "reasoning_steps": {"type": "array", "items": {"type": "string"}},
-        "considerations": {"type": "array", "items": {"type": "string"}},
+        "suitable_options": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "vehicle_type": {"type": "string"},
+                    "why_it_fits": {"type": "string"},
+                    "tradeoffs": {"type": "string"},
+                    "citation_labels": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["vehicle_type", "why_it_fits", "tradeoffs", "citation_labels"],
+                "additionalProperties": False,
+            },
+        },
+        "reasoning": {"type": "array", "items": {"type": "string"}},
+        "risks": {"type": "array", "items": {"type": "string"}},
+        "caveats": {"type": "array", "items": {"type": "string"}},
         "citations": {
             "type": "array",
             "items": {
@@ -51,7 +77,7 @@ RECOMMENDATION_SCHEMA: dict[str, object] = {
             },
         },
     },
-    "required": ["summary", "reasoning_steps", "considerations", "citations"],
+    "required": ["summary", "suitable_options", "reasoning", "risks", "caveats", "citations"],
     "additionalProperties": False,
 }
 
@@ -81,12 +107,24 @@ class Citation:
 
 
 @dataclass(frozen=True)
+class SuitableOption:
+    """One category of investment vehicle assessed against a profile, with its tradeoffs."""
+
+    vehicle_type: str
+    why_it_fits: str
+    tradeoffs: str
+    citation_labels: list[str]
+
+
+@dataclass(frozen=True)
 class Recommendation:
-    """A grounded, plain-language recommendation produced from a user profile."""
+    """A grounded, plain-language suitability analysis produced from a user profile."""
 
     summary: str
-    reasoning_steps: list[str]
-    considerations: list[str]
+    suitable_options: list[SuitableOption]
+    reasoning: list[str]
+    risks: list[str]
+    caveats: list[str]
     citations: list[Citation]
 
 
@@ -106,12 +144,21 @@ class ClaudeRecommendationLLM:
     cost — that trade-off is the deployer's call, not this class's default.
     """
 
-    def __init__(self, model: str = "claude-opus-5", client: anthropic.Anthropic | None = None) -> None:
-        """Create an Anthropic client, reading credentials from the environment."""
+    def __init__(
+        self,
+        model: str = "claude-opus-5",
+        client: anthropic.Anthropic | None = None,
+        api_key: str | None = None,
+    ) -> None:
+        """Create an Anthropic client.
+
+        ``api_key`` is passed straight to the SDK; if omitted, the SDK falls
+        back to the ``ANTHROPIC_API_KEY`` environment variable itself.
+        """
         import anthropic
 
         self.model = model
-        self._client = client or anthropic.Anthropic()
+        self._client = client or anthropic.Anthropic(api_key=api_key)
 
     def recommend(self, system_prompt: str, user_prompt: str) -> dict[str, object]:
         """Call Claude and parse its schema-constrained JSON response."""
@@ -137,13 +184,13 @@ def gather_evidence(retriever: Retriever, profile: UserProfile, per_query_limit:
 
 
 def build_user_prompt(profile: UserProfile, evidence: list[EvidencePassage]) -> str:
-    """Render the profile and numbered evidence passages into the user turn."""
+    """Render the synthetic profile and numbered evidence passages into the user turn."""
     passages = "\n\n".join(
         f"[{item.label}] {item.chunk.source_name} ({item.chunk.region}): {item.chunk.text}"
         for item in evidence
     )
     return (
-        "User profile:\n"
+        "Synthetic profile (generated test data, not a real person):\n"
         f"- Region: {profile.region}\n"
         f"- Goal: {profile.goal}\n"
         f"- Timeline: {profile.timeline_years} years\n"
@@ -151,9 +198,26 @@ def build_user_prompt(profile: UserProfile, evidence: list[EvidencePassage]) -> 
         f"- Monthly income: {profile.monthly_income}\n"
         f"- Investable amount: {profile.investable_amount}\n\n"
         f"Evidence passages:\n{passages}\n\n"
+        "Given this profile, identify which types of investment vehicle are generally "
+        "suitable, explain in plain language why each one fits this profile and what its "
+        "tradeoffs are, and cite the passages that support each point. Do not pick a single "
+        "option, name a product or provider, or suggest an amount to invest. "
         "Every reasoning step must be traceable to at least one passage label above; "
         "cite only labels that appear above."
     )
+
+
+def _resolve_options(payload: dict[str, object], valid_labels: set[str]) -> list[SuitableOption]:
+    """Build the suitable-option list, keeping only citation labels that were retrieved."""
+    return [
+        SuitableOption(
+            vehicle_type=raw.get("vehicle_type", ""),
+            why_it_fits=raw.get("why_it_fits", ""),
+            tradeoffs=raw.get("tradeoffs", ""),
+            citation_labels=[label for label in raw.get("citation_labels", []) if label in valid_labels],
+        )
+        for raw in payload.get("suitable_options", [])
+    ]
 
 
 def parse_recommendation(payload: dict[str, object], evidence: list[EvidencePassage]) -> Recommendation:
@@ -161,7 +225,9 @@ def parse_recommendation(payload: dict[str, object], evidence: list[EvidencePass
 
     A citation whose label doesn't match a retrieved passage is dropped rather
     than trusted, since the model can invent labels; if none survive, the
-    recommendation isn't grounded and this raises instead of returning it.
+    recommendation isn't grounded and this raises instead of returning it. The
+    standing disclaimer is appended locally so the user always sees it even if
+    the model omits it.
     """
     by_label = {item.label: item.chunk for item in evidence}
     citations = []
@@ -172,16 +238,19 @@ def parse_recommendation(payload: dict[str, object], evidence: list[EvidencePass
                                        raw.get("quote", "")))
     if not citations:
         raise ReasoningError("The model's response cited no valid evidence passages.")
+    caveats = [caveat for caveat in payload.get("caveats", []) if caveat != DISCLAIMER]
     return Recommendation(
         summary=payload["summary"],
-        reasoning_steps=list(payload.get("reasoning_steps", [])),
-        considerations=list(payload.get("considerations", [])),
+        suitable_options=_resolve_options(payload, set(by_label)),
+        reasoning=list(payload.get("reasoning", [])),
+        risks=list(payload.get("risks", [])),
+        caveats=[*caveats, DISCLAIMER],
         citations=citations,
     )
 
 
 class ReasoningAgent:
-    """Combines a user profile with retrieved evidence to produce a grounded recommendation."""
+    """Combines a user profile with retrieved evidence to produce a grounded suitability analysis."""
 
     def __init__(self, retriever: Retriever, llm: RecommendationLLM, per_query_limit: int = 3) -> None:
         """Wire the retriever and LLM this agent calls for each request."""
@@ -190,7 +259,7 @@ class ReasoningAgent:
         self.per_query_limit = per_query_limit
 
     def run(self, profile: UserProfile) -> Recommendation:
-        """Gather region-scoped evidence, prompt the LLM, and return a cited recommendation."""
+        """Gather region-scoped evidence, prompt the LLM, and return a cited analysis."""
         evidence = gather_evidence(self.retriever, profile, self.per_query_limit)
         if not evidence:
             raise ReasoningError("No evidence retrieved for this profile's region; cannot ground a recommendation.")

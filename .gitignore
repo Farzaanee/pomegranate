@@ -4,6 +4,10 @@ __pycache__/
 .pytest_cache/
 .DS_Store
 result.json
+.agents/
+.claude/
+.streamlit/
+images/
 
 # Local CLI scratch store. The deployed index lives in data/index/ and IS committed.
 data/chroma/

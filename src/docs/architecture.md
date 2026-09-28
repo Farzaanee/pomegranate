@@ -41,7 +41,7 @@ flowchart TD
     STORE -- "kNN query, region filter" --> SRCH
     STORE -- "region-scoped passages" --> GATH
 
-    VAL -- "at least 1 valid citation" --> REC["Recommendation<br/>summary · reasoning_steps<br/>considerations · citations"]
+    VAL -- "at least 1 valid citation" --> REC["Recommendation<br/>summary · suitable_options<br/>reasoning · risks · caveats · citations"]
     VAL -- "0 valid citations" --> ERR["ReasoningError<br/>no ungrounded answer is returned"]
 
     SRCH -- "SearchResult array" --> UI["User-facing surfaces<br/>CLI: investment-rag query / advise<br/>Streamlit app.py: Retrieval search / Grounded recommendation"]
@@ -88,11 +88,15 @@ to a real, region-matched source.
    account for UK, MiFID II protections for EU).
 3. `gather_evidence()` runs each through `Retriever.search(region=profile.region)`,
    dedupes by chunk id, and labels the survivors `1, 2, 3, …`.
-4. `build_user_prompt()` renders the profile plus the numbered passages;
+4. `build_user_prompt()` renders the profile — explicitly framed as synthetic
+   demo data — plus the numbered passages, and asks for suitability reasoning
+   across vehicle *types* rather than a single pick or an amount to invest.
    `ClaudeRecommendationLLM.recommend()` sends it to Claude with a JSON-schema
    output constraint, so the reply is a structured
-   `{summary, reasoning_steps, considerations, citations}` object rather than
-   free text.
+   `{summary, suitable_options, reasoning, risks, caveats, citations}` object
+   rather than free text. Framing the task as education over synthetic profiles
+   is what keeps Claude from softening or declining the response the way it does
+   when asked for direct, personalized investment instructions.
 5. `parse_recommendation()` resolves every citation label against the passages
    actually retrieved. Invented labels are dropped; if none remain, it raises
    `ReasoningError` rather than return an ungrounded answer.

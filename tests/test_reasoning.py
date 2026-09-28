@@ -2,7 +2,15 @@ import pytest
 
 from investment_rag.models import Chunk, SearchResult
 from investment_rag.profile import UserProfile
-from investment_rag.reasoning import EvidencePassage, ReasoningAgent, ReasoningError, gather_evidence, parse_recommendation
+from investment_rag.reasoning import (
+    DISCLAIMER,
+    EvidencePassage,
+    ReasoningAgent,
+    ReasoningError,
+    build_user_prompt,
+    gather_evidence,
+    parse_recommendation,
+)
 
 CHUNK_A = Chunk("uk-0", "Diversification lowers risk.", "MoneyHelper", "UK", "https://mh/div", "Diversification", 0)
 CHUNK_B = Chunk("uk-1", "An ISA shelters growth from tax.", "MoneyHelper", "UK", "https://mh/isa", "ISAs", 0)
@@ -52,8 +60,15 @@ def test_reasoning_agent_returns_grounded_recommendation() -> None:
     profile = UserProfile(2000, 1000, "retirement", 10, "medium", "UK")
     llm = FakeLLM({
         "summary": "Consider a diversified, low-cost approach.",
-        "reasoning_steps": ["Diversification reduces risk. [1]"],
-        "considerations": ["Check any existing high-interest debt first."],
+        "suitable_options": [{
+            "vehicle_type": "Broad index funds",
+            "why_it_fits": "A long horizon can ride out volatility.",
+            "tradeoffs": "Values can fall as well as rise.",
+            "citation_labels": ["1", "99"],
+        }],
+        "reasoning": ["Diversification reduces risk. [1]"],
+        "risks": ["Markets can fall."],
+        "caveats": ["Check any existing high-interest debt first."],
         "citations": [{"label": "1", "quote": "Diversification lowers risk."}],
     })
     agent = ReasoningAgent(FakeRetriever(), llm)
@@ -61,8 +76,23 @@ def test_reasoning_agent_returns_grounded_recommendation() -> None:
     recommendation = agent.run(profile)
 
     assert recommendation.summary.startswith("Consider")
+    assert recommendation.suitable_options[0].vehicle_type == "Broad index funds"
+    assert recommendation.suitable_options[0].citation_labels == ["1"]
+    assert recommendation.risks == ["Markets can fall."]
+    assert recommendation.caveats[-1] == DISCLAIMER
     assert recommendation.citations[0].source_name == "MoneyHelper"
     assert recommendation.citations[0].url == "https://mh/div"
+
+
+def test_user_prompt_frames_the_profile_as_synthetic_and_asks_for_suitability() -> None:
+    """The prompt must read as an educational suitability question, not an instruction to act."""
+    profile = UserProfile(2000, 1000, "retirement", 10, "medium", "UK")
+
+    prompt = build_user_prompt(profile, [EvidencePassage("1", CHUNK_A)])
+
+    assert "Synthetic profile" in prompt
+    assert "which types of investment vehicle are generally suitable" in prompt
+    assert "suggest an amount to invest" in prompt
 
 
 def test_reasoning_agent_raises_when_no_evidence_available() -> None:
@@ -75,7 +105,7 @@ def test_reasoning_agent_raises_when_no_evidence_available() -> None:
 def test_parse_recommendation_drops_fabricated_citation_label() -> None:
     evidence = [EvidencePassage("1", CHUNK_A)]
     payload = {
-        "summary": "x", "reasoning_steps": [], "considerations": [],
+        "summary": "x", "suitable_options": [], "reasoning": [], "risks": [], "caveats": [],
         "citations": [{"label": "1", "quote": "ok"}, {"label": "99", "quote": "invented"}],
     }
 
@@ -84,9 +114,22 @@ def test_parse_recommendation_drops_fabricated_citation_label() -> None:
     assert [c.label for c in recommendation.citations] == ["1"]
 
 
+def test_parse_recommendation_always_appends_the_disclaimer_once() -> None:
+    """The standing disclaimer is added locally, even if the model already emitted it."""
+    evidence = [EvidencePassage("1", CHUNK_A)]
+    payload = {
+        "summary": "x", "suitable_options": [], "reasoning": [], "risks": [],
+        "caveats": [DISCLAIMER], "citations": [{"label": "1", "quote": "ok"}],
+    }
+
+    recommendation = parse_recommendation(payload, evidence)
+
+    assert recommendation.caveats == [DISCLAIMER]
+
+
 def test_parse_recommendation_raises_when_all_citations_invalid() -> None:
     evidence = [EvidencePassage("1", CHUNK_A)]
-    payload = {"summary": "x", "reasoning_steps": [], "considerations": [],
+    payload = {"summary": "x", "suitable_options": [], "reasoning": [], "risks": [], "caveats": [],
                "citations": [{"label": "99", "quote": "invented"}]}
 
     with pytest.raises(ReasoningError):

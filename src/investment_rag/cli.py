@@ -69,10 +69,22 @@ def main() -> None:
         recommendation = agent.run(profile)
         print(f"{DISCLAIMER}\n")
         print(f"{recommendation.summary}\n")
-        for step in recommendation.reasoning_steps:
+        for option in recommendation.suitable_options:
+            labels = " ".join(f"[{label}]" for label in option.citation_labels)
+            print(f"- {option.vehicle_type} {labels}".rstrip())
+            print(f"    Why it fits: {option.why_it_fits}")
+            print(f"    Tradeoffs: {option.tradeoffs}")
+        print("\nReasoning:")
+        for step in recommendation.reasoning:
             print(f"- {step}")
-        for consideration in recommendation.considerations:
-            print(f"\nNote: {consideration}")
+        if recommendation.risks:
+            print("\nRisks:")
+            for risk in recommendation.risks:
+                print(f"- {risk}")
+        if recommendation.caveats:
+            print("\nCaveats:")
+            for caveat in recommendation.caveats:
+                print(f"- {caveat}")
         print("\nSources:")
         for citation in recommendation.citations:
             print(f"  [{citation.label}] {citation.source_name} ({citation.region}) — {citation.url}")

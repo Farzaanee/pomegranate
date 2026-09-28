@@ -32,7 +32,7 @@ from investment_rag.retrieval import Retriever
 RAW_DIR = Path(__file__).parent / "data" / "raw"
 INDEX_DIR = Path(__file__).parent / "data" / "index"
 DISCLAIMER = (
-    "Educational only — not regulated financial advice. Passages are retrieved "
+    "General information, not regulated financial advice. Passages are retrieved "
     "verbatim from official public sources and are not investment recommendations."
 )
 
@@ -72,39 +72,53 @@ def render_result(result: SearchResult) -> None:
     st.divider()
 
 
+def get_api_key() -> str | None:
+    """Resolve the Anthropic API key from Streamlit secrets, falling back to the environment."""
+    try:
+        if st.secrets.get("ANTHROPIC_API_KEY"):
+            return str(st.secrets["ANTHROPIC_API_KEY"])
+    except Exception:
+        pass
+    return os.environ.get("ANTHROPIC_API_KEY")
+
+
 def has_api_key() -> bool:
     """Report whether an Anthropic API key is available from secrets or the environment."""
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        return True
-    try:
-        return bool(st.secrets.get("ANTHROPIC_API_KEY"))
-    except Exception:
-        return False
+    return bool(get_api_key())
 
 
 @st.cache_resource(show_spinner=False)
 def load_reasoning_agent(_retriever: Retriever) -> ReasoningAgent:
-    """Build the reasoning agent, promoting a Streamlit secret into the environment first.
+    """Build the reasoning agent with the API key resolved from secrets or the environment.
 
     The leading underscore on ``_retriever`` tells Streamlit not to hash it (a
     live Chroma client isn't hashable) while still caching one agent per process.
     """
-    if not os.environ.get("ANTHROPIC_API_KEY") and has_api_key():
-        os.environ["ANTHROPIC_API_KEY"] = st.secrets["ANTHROPIC_API_KEY"]
-    return ReasoningAgent(_retriever, ClaudeRecommendationLLM())
+    return ReasoningAgent(_retriever, ClaudeRecommendationLLM(api_key=get_api_key()))
 
 
 def render_recommendation(recommendation: Recommendation) -> None:
-    """Render a grounded recommendation with its plain-language reasoning and citations."""
-    st.subheader("Recommendation")
+    """Render a grounded suitability analysis with its reasoning, risks, and citations."""
+    st.subheader("Suitability analysis")
     st.write(recommendation.summary)
+    if recommendation.suitable_options:
+        st.markdown("**Vehicle types that fit this profile**")
+        for option in recommendation.suitable_options:
+            labels = " ".join(f"[{label}]" for label in option.citation_labels)
+            with st.expander(f"{option.vehicle_type} {labels}".strip()):
+                st.markdown(f"**Why it fits:** {option.why_it_fits}")
+                st.markdown(f"**Tradeoffs:** {option.tradeoffs}")
     st.markdown("**Reasoning**")
-    for step in recommendation.reasoning_steps:
+    for step in recommendation.reasoning:
         st.markdown(f"- {step}")
-    if recommendation.considerations:
-        st.markdown("**Check before you act**")
-        for consideration in recommendation.considerations:
-            st.markdown(f"- {consideration}")
+    if recommendation.risks:
+        st.markdown("**Risks**")
+        for risk in recommendation.risks:
+            st.markdown(f"- {risk}")
+    if recommendation.caveats:
+        st.markdown("**Caveats**")
+        for caveat in recommendation.caveats:
+            st.markdown(f"- {caveat}")
     st.markdown("**Sources**")
     for citation in recommendation.citations:
         with st.expander(f"[{citation.label}] {citation.source_name} · {citation.region}"):
