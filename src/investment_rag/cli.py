@@ -8,7 +8,7 @@ from .chunking import chunk_documents
 from .collect import CollectionError, collect_source, load_sources, save_documents
 from .models import SourceDocument
 from .profile import GOALS, RISK_TOLERANCES, UserProfile
-from .reasoning import DISCLAIMER, ClaudeRecommendationLLM, ReasoningAgent
+from .reasoning import DISCLAIMER, ClaudeRecommendationLLM, ReasoningAgent, explain_region_difference
 from .retrieval import Retriever
 
 
@@ -40,6 +40,12 @@ def main() -> None:
     advise_parser.add_argument("--region", choices=["EU", "UK"], required=True)
     advise_parser.add_argument("--store", default="data/index")
     advise_parser.add_argument("--model", default="claude-sonnet-5", help="Anthropic model for the reasoning step.")
+    compare_parser = commands.add_parser(
+        "compare", help="Explain a key EU vs UK difference on a topic, grounded in both regions' sources."
+    )
+    compare_parser.add_argument("topic")
+    compare_parser.add_argument("--store", default="data/index")
+    compare_parser.add_argument("--model", default="claude-sonnet-5", help="Anthropic model for the comparison step.")
     args = parser.parse_args()
 
     if args.command == "collect":
@@ -63,6 +69,17 @@ def main() -> None:
     elif args.command == "query":
         for item in Retriever(args.store).search(args.question, args.limit, args.region):
             print(f"[{item.chunk.source_name} | {item.chunk.region} | {item.chunk.url}]\n{item.chunk.text}\n")
+    elif args.command == "compare":
+        llm = ClaudeRecommendationLLM(model=args.model)
+        result = explain_region_difference(Retriever(args.store), llm, args.topic)
+        print(f"{DISCLAIMER}\n")
+        print(f"EU: {result.eu_summary}\n")
+        print(f"UK: {result.uk_summary}\n")
+        print(f"Key difference: {result.key_difference}\n")
+        print("Sources:")
+        for citation in result.citations:
+            print(f"  [{citation.label}] {citation.source_name} ({citation.region}) — {citation.url}")
+            print(f'      "{citation.quote}"')
     else:
         profile = UserProfile(args.income, args.amount, args.goal, args.timeline, args.risk_tolerance, args.region)
         agent = ReasoningAgent(Retriever(args.store), ClaudeRecommendationLLM(model=args.model))

@@ -9,9 +9,11 @@ The Chroma index is built offline by ``investment-rag build`` and committed unde
 search directly, with the same region filter as ``investment-rag query``.
 "Grounded recommendation" additionally sends the retrieved evidence to Claude
 (``investment_rag.reasoning``) to produce a cited, plain-language recommendation
-for a user profile, provided an ``ANTHROPIC_API_KEY`` is configured. Nothing in
-the knowledge base is re-embedded at startup — only the user's query is
-embedded, at search time.
+for a user profile, provided an ``ANTHROPIC_API_KEY`` is configured. "Compare EU
+vs UK" (Phase 3) asks the same evidence-then-Claude pipeline for a grounded
+explanation of a jurisdiction difference, with citations kept separately
+attributed to each region. Nothing in the knowledge base is re-embedded at
+startup — only the user's query is embedded, at search time.
 """
 
 from __future__ import annotations
@@ -26,7 +28,14 @@ import streamlit as st
 
 from investment_rag.models import SearchResult, SourceDocument
 from investment_rag.profile import GOALS, RISK_TOLERANCES, UserProfile
-from investment_rag.reasoning import ClaudeRecommendationLLM, Recommendation, ReasoningAgent, ReasoningError
+from investment_rag.reasoning import (
+    ClaudeRecommendationLLM,
+    Recommendation,
+    RegionDifference,
+    ReasoningAgent,
+    ReasoningError,
+    explain_region_difference,
+)
 from investment_rag.retrieval import Retriever
 
 RAW_DIR = Path(__file__).parent / "data" / "raw"
@@ -126,6 +135,47 @@ def render_recommendation(recommendation: Recommendation) -> None:
             st.markdown(f"[{citation.url}]({citation.url})")
 
 
+def render_region_difference(difference: RegionDifference) -> None:
+    """Render a grounded EU vs UK comparison with its per-region summaries and citations."""
+    st.markdown("**EU**")
+    st.write(difference.eu_summary)
+    st.markdown("**UK**")
+    st.write(difference.uk_summary)
+    st.markdown("**Key difference**")
+    st.write(difference.key_difference)
+    st.markdown("**Sources**")
+    for citation in difference.citations:
+        with st.expander(f"[{citation.label}] {citation.source_name} · {citation.region}"):
+            st.write(f"“{citation.quote}”")
+            st.markdown(f"[{citation.url}]({citation.url})")
+
+
+def render_compare_regions_mode(retriever: Retriever) -> None:
+    """Draw the Phase 3 EU vs UK comparison UI and run it on submission."""
+    if not has_api_key():
+        st.warning(
+            "No Anthropic API key configured (set `ANTHROPIC_API_KEY` as a Streamlit secret or "
+            "environment variable) — the comparison step needs one to call Claude."
+        )
+        return
+
+    topic = st.text_input(
+        "Ask about an EU vs UK difference",
+        placeholder="How does an ISA compare to general investor protections?",
+    )
+    if not topic:
+        return
+
+    agent = load_reasoning_agent(retriever)
+    with st.spinner("Retrieving evidence from both regions and comparing them…"):
+        try:
+            difference = explain_region_difference(retriever, agent.llm, topic)
+        except ReasoningError as error:
+            st.error(str(error))
+            return
+    render_region_difference(difference)
+
+
 def render_retrieval_mode(retriever: Retriever) -> None:
     """Draw the Phase 1 semantic-search UI and run a search on submission."""
     with st.sidebar:
@@ -200,15 +250,18 @@ def main() -> None:
             st.markdown(f"- **{source_name}** ({region})")
         st.caption(
             f"{len(sources)} official source(s) across {len(documents)} indexed page(s). "
-            "Phase 2 adds a reasoning agent on top of Phase 1 retrieval — see project-plan.md."
+            "Phase 2 adds a reasoning agent on top of Phase 1 retrieval; Phase 3 adds the EU vs "
+            "UK comparison mode — see project-plan.md."
         )
-        mode = st.radio("Mode", ["Retrieval search", "Grounded recommendation"])
+        mode = st.radio("Mode", ["Retrieval search", "Grounded recommendation", "Compare EU vs UK"])
 
     retriever = load_retriever()
     if mode == "Retrieval search":
         render_retrieval_mode(retriever)
-    else:
+    elif mode == "Grounded recommendation":
         render_recommendation_mode(retriever)
+    else:
+        render_compare_regions_mode(retriever)
 
 
 if __name__ == "__main__":

@@ -64,6 +64,41 @@ walkthrough. Implements the Phase 2 plan below on top of the Phase 1 pipeline:
 
 ---
 
+## Phase 3 implementation notes
+
+Adds explicit multi-jurisdiction routing on top of the region locking Phase 2 already
+applied at the retriever level:
+
+- `gather_evidence` (`src/investment_rag/reasoning.py`) now re-checks every retrieved chunk's
+  `region` field against `profile.region` before keeping it, instead of trusting the Chroma
+  `where` filter alone. This is the explicit routing/classification step: it holds even if the
+  retriever's own filter is ever misconfigured or bypassed, and is covered by
+  `test_gather_evidence_drops_out_of_region_results_even_if_the_retriever_leaks_them`, which
+  exercises a deliberately leaky fake retriever.
+- `explain_region_difference` (`reasoning.py`) is new agent functionality for the second Phase 3
+  acceptance criterion — explaining a key EU/UK difference when asked directly. Given a topic, it
+  runs `gather_region_comparison_evidence`, which queries each region separately and labels
+  passages `"EU-1"`, `"UK-1"`, … by the region they were retrieved under (rather than a shared
+  counter), so the region a citation came from is legible in the prompt itself. `ClaudeRecommendationLLM.compare` asks Claude (same model choice as Phase 2) for a
+  `{eu_summary, uk_summary, key_difference, citations}` object. `parse_region_difference` then
+  validates citations the same way Phase 2's `parse_recommendation` does, plus one more check
+  specific to the comparison: a citation is only kept if its label's region prefix (`"EU-"` /
+  `"UK-"`) actually matches the region of the chunk it resolved to, so the model can't launder an
+  EU claim under a UK-looking label or vice versa.
+- Exposed via `investment-rag compare <topic>` (CLI) and the "Compare EU vs UK" mode in `app.py`
+  (Streamlit), both gated on `ANTHROPIC_API_KEY` like the Phase 2 recommendation mode.
+- `tests/test_reasoning.py` adds the region-leak test above, a same-profile-under-both-regions
+  comparison scenario (`test_same_profile_evaluated_under_both_regions_never_mixes_sources`), and
+  coverage for the comparison pipeline's evidence gathering, citation validation, and empty-evidence
+  error path.
+
+**Acceptance criterion met:** the agent only cites region-appropriate sources for a given user —
+enforced in code, not just by the retriever's filter — and `investment-rag compare` explains a
+concrete EU/UK difference (e.g. ISA wrappers vs. MiFID II protections) with citations traceable to
+region-matched official sources.
+
+---
+
 # Project Brief: Grounded Investment Research Agent (EU/UK)
 
 ## 1. Project Summary

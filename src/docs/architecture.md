@@ -1,18 +1,22 @@
 # Architecture
 
-How Phase 1 (retrieval) and Phase 2 (reasoning) fit together: two phases sharing
-one evidence trail. Phase 1 turns official EU/UK sources into a searchable,
-provenance-tagged vector store. Phase 2 adds a reasoning agent that queries that
-same store on a user's behalf and asks Claude for a recommendation — but only
-returns it once every claim resolves back to a real, retrieved passage.
+How Phase 1 (retrieval), Phase 2 (reasoning), and Phase 3 (multi-jurisdiction
+routing) fit together: three phases sharing one evidence trail. Phase 1 turns
+official EU/UK sources into a searchable, provenance-tagged vector store.
+Phase 2 adds a reasoning agent that queries that same store on a user's behalf
+and asks Claude for a recommendation — but only returns it once every claim
+resolves back to a real, retrieved passage. Phase 3 hardens the region
+boundary Phase 2 already enforced at the retriever level, and adds a second
+request path that explains a jurisdiction difference directly.
 
 > Educational only, not regulated financial advice. This diagram reflects the
 > code in [`src/investment_rag/`](../investment_rag/) and [`app.py`](../../app.py)
-> as of Phase 2.
+> as of Phase 3.
 
-An interactive version of this diagram is published as an Artifact at
-<https://claude.ai/code/artifact/dc91dada-5ff5-417c-ad3e-2d1433ff9545>; this
-document is the canonical, version-controlled copy.
+An interactive version of this diagram was published as an Artifact at
+<https://claude.ai/code/artifact/dc91dada-5ff5-417c-ad3e-2d1433ff9545> as of
+Phase 2 and has not been republished for Phase 3; this document is the
+canonical, version-controlled copy and is kept current.
 
 ## System diagram
 
@@ -37,33 +41,52 @@ flowchart TD
         PROF --> QRY --> GATH --> LLM --> VAL
     end
 
+    subgraph P3["PHASE 3 — MULTI-JURISDICTION COMPARISON"]
+        TOPIC["Topic<br/>e.g. 'ISA vs MiFID II'"]
+        CGATH["Gather comparison evidence<br/>gather_region_comparison_evidence() · reasoning.py<br/>queries EU and UK separately, labels EU-N / UK-N"]
+        CLLM["Ask Claude to compare<br/>ClaudeRecommendationLLM.compare()<br/>Claude API · schema-constrained JSON"]
+        CVAL["Validate region-matched citations<br/>parse_region_difference() · reasoning.py<br/>drops any label whose EU-/UK- prefix doesn't match its chunk's region"]
+        TOPIC --> CGATH --> CLLM --> CVAL
+    end
+
     CHK -- "embeddings + metadata" --> STORE
     STORE -- "kNN query, region filter" --> SRCH
-    STORE -- "region-scoped passages" --> GATH
+    STORE -- "region-scoped passages, re-checked in gather_evidence" --> GATH
+    STORE -- "region-scoped passages, queried per region" --> CGATH
 
     VAL -- "at least 1 valid citation" --> REC["Recommendation<br/>summary · suitable_options<br/>reasoning · risks · caveats · citations"]
     VAL -- "0 valid citations" --> ERR["ReasoningError<br/>no ungrounded answer is returned"]
+    CVAL -- "at least 1 region-matched citation" --> DIFF["RegionDifference<br/>eu_summary · uk_summary · key_difference · citations"]
+    CVAL -- "0 valid citations" --> ERR
 
-    SRCH -- "SearchResult array" --> UI["User-facing surfaces<br/>CLI: investment-rag query / advise<br/>Streamlit app.py: Retrieval search / Grounded recommendation"]
+    SRCH -- "SearchResult array" --> UI["User-facing surfaces<br/>CLI: investment-rag query / advise / compare<br/>Streamlit app.py: Retrieval search / Grounded recommendation / Compare EU vs UK"]
     REC --> UI
+    DIFF --> UI
 
     classDef gate stroke-width:3px
-    class VAL gate
+    class VAL,CVAL gate
 ```
 
 ## How to read it
 
-**Both phases share one retrieval mechanism.** Phase 1's `Retriever.search()` is
-called directly for plain queries, and again internally by Phase 2's
-`gather_evidence()` — every call locked to the user's `region`, so a UK profile
-never sees EU-only passages or vice versa.
+**All three phases share one retrieval mechanism.** Phase 1's `Retriever.search()`
+is called directly for plain queries, and again internally by Phase 2's
+`gather_evidence()` and Phase 3's `gather_region_comparison_evidence()` — every
+call locked to a region, so a UK profile never sees EU-only passages or vice
+versa. Phase 3 goes one step further: `gather_evidence()` no longer trusts the
+retriever's `where` filter alone — it re-checks each result's `region` field
+itself before keeping it, so a bug in the store can't leak an out-of-region
+source into a recommendation.
 
-**The `Validate citations` step is the trust boundary** (thick border above). It
-re-checks Claude's citation labels against the passages actually retrieved and
-discards anything invented, raising `ReasoningError` instead of surfacing an
-ungrounded answer. This is what backs the project's low-hallucination goal:
-a recommendation cannot reach the user carrying a citation that doesn't resolve
-to a real, region-matched source.
+**The `Validate citations` steps are the trust boundary** (thick border above).
+`parse_recommendation()` re-checks Claude's citation labels against the passages
+actually retrieved and discards anything invented, raising `ReasoningError`
+instead of surfacing an ungrounded answer. Phase 3's `parse_region_difference()`
+adds a second check on top: a citation labeled `"EU-N"` or `"UK-N"` is only kept
+if that prefix matches the region of the chunk it resolved to, so the model
+can't launder an EU claim under a UK-looking label or vice versa. This is what
+backs the project's low-hallucination goal: an answer cannot reach the user
+carrying a citation that doesn't resolve to a real, region-matched source.
 
 ## The two request paths
 
@@ -111,6 +134,28 @@ to a real, region-matched source.
 6. On success: a `Recommendation` whose citations each resolve to a real,
    region-matched source, rendered by the CLI or the Streamlit app.
 
+### Compare EU vs UK — Phase 1 + Phase 3
+
+`investment-rag compare <topic>` · Streamlit "Compare EU vs UK"
+
+1. `gather_region_comparison_evidence()` runs the topic through
+   `Retriever.search()` once per region, labeling survivors `"EU-1"`, `"EU-2"`,
+   …, `"UK-1"`, `"UK-2"`, … by the region they were retrieved under, so the
+   provenance of each passage is legible in the prompt itself.
+2. `build_region_difference_prompt()` renders the topic plus both regions'
+   passages and asks for what generally applies in each region and the single
+   most important difference between them — never a product, an amount, or an
+   instruction to act, framed the same way as Phase 2.
+   `ClaudeRecommendationLLM.compare()` sends it to Claude with a JSON-schema
+   output constraint for a `{eu_summary, uk_summary, key_difference, citations}`
+   object.
+3. `parse_region_difference()` resolves every citation label against the
+   passages actually retrieved, same as Phase 2, and additionally rejects any
+   citation whose `"EU-"` / `"UK-"` label prefix doesn't match the region of the
+   chunk it resolved to. If nothing survives, it raises `ReasoningError`.
+4. On success: a `RegionDifference` whose EU and UK claims each carry citations
+   that are traceably drawn from that region's own sources.
+
 ## Module reference
 
 | Module | Phase | Responsibility |
@@ -120,13 +165,12 @@ to a real, region-matched source.
 | [`chunking.py`](../investment_rag/chunking.py) | 1 | Sentence-boundary chunking with a carried-over overlap, so no passage loses its context mid-sentence. |
 | [`retrieval.py`](../investment_rag/retrieval.py) | 1 | ONNX MiniLM embeddings, persistent Chroma storage, and the region-filtered `search()` both phases call. |
 | [`profile.py`](../investment_rag/profile.py) | 2 | `UserProfile` plus `retrieval_queries()`, which turns income/goal/timeline/risk/region into five targeted evidence queries. |
-| [`reasoning.py`](../investment_rag/reasoning.py) | 2 | Evidence gathering, the Claude call with a JSON-schema output constraint, and the citation-validation gate. |
-| [`cli.py`](../investment_rag/cli.py) | both | The `investment-rag` commands: `collect`, `build`, `query` (Phase 1), and `advise` (Phase 2). |
-| [`app.py`](../../app.py) | both | Streamlit UI with two modes — retrieval search, and the profile form behind grounded recommendations. |
+| [`reasoning.py`](../investment_rag/reasoning.py) | 2, 3 | Evidence gathering (with a region-leak check as of Phase 3), the Claude calls (`recommend()`, `compare()`) with a JSON-schema output constraint, and the citation-validation gates for both request paths. |
+| [`cli.py`](../investment_rag/cli.py) | all | The `investment-rag` commands: `collect`, `build`, `query` (Phase 1), `advise` (Phase 2), and `compare` (Phase 3). |
+| [`app.py`](../../app.py) | all | Streamlit UI with three modes — retrieval search, the profile form behind grounded recommendations, and the EU vs UK comparison. |
 
 ## What comes next
 
-Phase 3 adds explicit multi-jurisdiction routing on top of the region locking
-already enforced here; Phase 4 adds an evaluation harness for groundedness and
-hallucination rate. See [project-plan.md](project-plan.md) for the full
-phase-by-phase plan and acceptance criteria.
+Phase 4 adds an evaluation harness for groundedness and hallucination rate.
+See [project-plan.md](project-plan.md) for the full phase-by-phase plan and
+acceptance criteria.
