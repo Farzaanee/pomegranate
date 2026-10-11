@@ -40,7 +40,7 @@ class UserProfile:
         """Build the sub-queries used to gather region-scoped supporting evidence.
 
         Each query targets one suitability dimension (horizon, risk, fees, goal,
-        region-specific product) so the retrieved evidence set covers the whole
+        debt and emergency savings, region-specific product) so the retrieved evidence set covers the whole
         profile rather than just its closest single match.
         """
         horizon = "short" if self.timeline_years < 3 else "medium" if self.timeline_years < 10 else "long"
@@ -49,6 +49,7 @@ class UserProfile:
             f"{self.risk_tolerance} risk tolerance investment options",
             "fees and costs of investment products",
             f"investing for {self.goal.replace('_', ' ')}",
+            "paying off debt and building emergency savings before investing",
         ]
         queries.append("ISA versus general investment account" if self.region == "UK"
                         else "retail investor protections under MiFID II")

@@ -248,3 +248,75 @@ def test_explain_region_difference_raises_when_no_evidence_available() -> None:
 
     with pytest.raises(ReasoningError):
         explain_region_difference(EmptyBothRetriever(), FakeCompareLLM({}), "any topic")
+
+
+class RankedRetriever:
+    """Returns the same three ranked UK chunks per query, but a distinct set for each query."""
+
+    def __init__(self) -> None:
+        """Count queries so each gets its own chunk ids."""
+        self.count = 0
+
+    def search(self, question: str, limit: int = 4, region: str | None = None) -> list[SearchResult]:
+        """Return ``limit`` chunks unique to this query."""
+        self.count += 1
+        return [SearchResult(Chunk(f"q{self.count}-r{rank}", "text", "FCA", "UK", "https://x", "t", rank), 0.1)
+                for rank in range(limit)]
+
+
+def test_gather_evidence_gives_every_query_a_share_before_the_cap_applies() -> None:
+    """Round-robin: the best hit of every query is kept; the cap trims depth, never whole queries."""
+    profile = UserProfile(2000, 1000, "retirement", 10, "medium", "UK")
+    queries = len(profile.retrieval_queries())
+
+    evidence = gather_evidence(RankedRetriever(), profile)
+
+    top_hits = {item.chunk.id for item in evidence if item.chunk.id.endswith("-r0")}
+    assert len(evidence) == 10
+    assert top_hits == {f"q{n}-r0" for n in range(1, queries + 1)}
+
+
+class FakeResponse:
+    """A minimal stand-in for an Anthropic message."""
+
+    def __init__(self, text: str, stop_reason: str = "end_turn") -> None:
+        """Build a one-text-block response."""
+        self.stop_reason = stop_reason
+        self.content = [type("Block", (), {"type": "text", "text": text})()]
+
+
+class FakeClient:
+    """Records the kwargs of the single ``messages.create`` call and returns a canned response."""
+
+    def __init__(self, response: FakeResponse) -> None:
+        """Expose ``messages.create`` the way the SDK does."""
+        self.kwargs: dict[str, object] = {}
+        self.messages = type("Messages", (), {"create": self._create})()
+        self._response = response
+
+    def _create(self, **kwargs: object) -> FakeResponse:
+        """Capture the request and return the canned response."""
+        self.kwargs = kwargs
+        return self._response
+
+
+def test_claude_llm_disables_thinking_so_it_cannot_eat_the_json_budget() -> None:
+    """Thinking tokens share max_tokens with the JSON, so the request must turn thinking off."""
+    from investment_rag.reasoning import ClaudeRecommendationLLM
+
+    client = FakeClient(FakeResponse('{"summary": "ok"}'))
+
+    payload = ClaudeRecommendationLLM(client=client).recommend("system", "user")
+
+    assert payload == {"summary": "ok"}
+    assert client.kwargs["thinking"] == {"type": "disabled"}
+
+
+def test_claude_llm_raises_a_readable_error_when_the_response_is_truncated() -> None:
+    """A max_tokens stop becomes a ReasoningError, not a JSONDecodeError from a cut-off string."""
+    from investment_rag.reasoning import ClaudeRecommendationLLM
+
+    client = FakeClient(FakeResponse('{"summary": "cut o', stop_reason="max_tokens"))
+
+    with pytest.raises(ReasoningError, match="cut off"):
+        ClaudeRecommendationLLM(client=client).recommend("system", "user")

@@ -1,5 +1,6 @@
-"""Streamlit interface for the grounded retrieval pipeline (Phase 1) and the
-citation-backed reasoning agent built on top of it (Phase 2).
+"""Streamlit interface for the grounded retrieval pipeline (Phase 1), the
+citation-backed reasoning agent built on top of it (Phase 2), the EU vs UK comparison
+(Phase 3), and the stored evaluation results (Phase 4).
 
 Run locally with ``streamlit run app.py``. On Hugging Face Spaces the Streamlit
 SDK reads the YAML header in ``README.md`` and runs this file automatically.
@@ -12,7 +13,9 @@ search directly, with the same region filter as ``investment-rag query``.
 for a user profile, provided an ``ANTHROPIC_API_KEY`` is configured. "Compare EU
 vs UK" (Phase 3) asks the same evidence-then-Claude pipeline for a grounded
 explanation of a jurisdiction difference, with citations kept separately
-attributed to each region. Nothing in the knowledge base is re-embedded at
+attributed to each region. "Evaluation results" (Phase 4) shows the latest
+``investment-rag evaluate`` run from ``evals/results/latest.json`` — no API key
+needed, since it only reads the stored report. Nothing in the knowledge base is re-embedded at
 startup — only the user's query is embedded, at search time.
 """
 
@@ -40,6 +43,7 @@ from investment_rag.retrieval import Retriever
 
 RAW_DIR = Path(__file__).parent / "data" / "raw"
 INDEX_DIR = Path(__file__).parent / "data" / "index"
+EVAL_RESULTS = Path(__file__).parent / "evals" / "results" / "latest.json"
 DISCLAIMER = (
     "General information, not regulated financial advice. Passages are retrieved "
     "verbatim from official public sources and are not investment recommendations."
@@ -176,6 +180,48 @@ def render_compare_regions_mode(retriever: Retriever) -> None:
     render_region_difference(difference)
 
 
+def format_rate(value: float | None) -> str:
+    """Format a 0-1 rate as a percentage, or an en dash when it was not measured."""
+    return "–" if value is None else f"{value:.0%}"
+
+
+def render_evaluation_mode() -> None:
+    """Show the stored Phase 4 evaluation report: headline metrics, then every case and failed check."""
+    if not EVAL_RESULTS.exists():
+        st.info("No evaluation report found. Generate one with `investment-rag evaluate --output "
+                "evals/results/latest.json`.")
+        return
+    report = json.loads(EVAL_RESULTS.read_text(encoding="utf-8"))
+    summary = report["summary"]
+    st.subheader("Evaluation results")
+    st.caption(
+        f"Latest run: {summary['cases']} cases against the committed index, model `{report['model'] or 'none'}`. "
+        "Checks are deterministic string checks against the retrieved passages, not an LLM judge — "
+        "see evaluation.md for what they do and do not establish."
+    )
+    with st.container(horizontal=True):
+        st.metric("Cases passed", f"{summary['cases_passed']} / {summary['cases']}", border=True)
+        st.metric("Hallucinated citations", format_rate(summary["hallucinated_citation_rate"]), border=True)
+        st.metric("Quote support", format_rate(summary["quote_support_rate"]), border=True)
+        st.metric("Region match", format_rate(summary["region_match_rate"]), border=True)
+    with st.container(horizontal=True):
+        st.metric("Fee awareness (soft)", format_rate(summary["fee_awareness_rate"]), border=True)
+        st.metric("Debt awareness (soft)", format_rate(summary["debt_awareness_rate"]), border=True)
+        st.metric("Groundedness vs bar", f"{format_rate(summary['groundedness_rate'])} / "
+                                         f"{report['threshold']:.0%}", border=True)
+    rows = [
+        {
+            "Case": case["id"],
+            "Kind": case["kind"],
+            "Result": "pass" if case["passed"] else "FAIL",
+            "Checks failed": ", ".join(c["name"] + ("" if c["hard"] else " (soft)")
+                                       for c in case["checks"] if not c["passed"]) or "–",
+        }
+        for case in report["cases"]
+    ]
+    st.dataframe(rows, hide_index=True)
+
+
 def render_retrieval_mode(retriever: Retriever) -> None:
     """Draw the Phase 1 semantic-search UI and run a search on submission."""
     with st.sidebar:
@@ -237,7 +283,7 @@ def render_recommendation_mode(retriever: Retriever) -> None:
 
 
 def main() -> None:
-    """Draw the sidebar and run whichever mode (retrieval or recommendation) is selected."""
+    """Draw the sidebar and run whichever mode is selected."""
     st.set_page_config(page_title="Grounded Investment RAG", page_icon="\U0001f4c8")
     st.title("\U0001f4c8 Grounded Investment Research")
     st.caption(DISCLAIMER)
@@ -251,17 +297,20 @@ def main() -> None:
         st.caption(
             f"{len(sources)} official source(s) across {len(documents)} indexed page(s). "
             "Phase 2 adds a reasoning agent on top of Phase 1 retrieval; Phase 3 adds the EU vs "
-            "UK comparison mode — see project-plan.md."
+            "UK comparison mode; Phase 4 adds the evaluation harness — see project-plan.md."
         )
-        mode = st.radio("Mode", ["Retrieval search", "Grounded recommendation", "Compare EU vs UK"])
+        mode = st.radio("Mode", ["Retrieval search", "Grounded recommendation", "Compare EU vs UK",
+                                 "Evaluation results"])
 
     retriever = load_retriever()
     if mode == "Retrieval search":
         render_retrieval_mode(retriever)
     elif mode == "Grounded recommendation":
         render_recommendation_mode(retriever)
-    else:
+    elif mode == "Compare EU vs UK":
         render_compare_regions_mode(retriever)
+    else:
+        render_evaluation_mode()
 
 
 if __name__ == "__main__":

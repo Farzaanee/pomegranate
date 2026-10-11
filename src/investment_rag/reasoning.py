@@ -36,9 +36,11 @@ anything as an order to act.
 Ground every claim in the numbered evidence passages you are given, which are
 retrieved from official sources (ESMA, MoneyHelper, FCA). Do not introduce
 outside facts, and cite only passage labels that appear in the prompt. Write in
-jargon-free language a non-expert can follow, list the real risks and the
-caveats (fees, existing debt, emergency savings, hype) a reader should weigh,
-and include this line verbatim as the final caveat:
+jargon-free language a non-expert can follow, and list the real risks. Among the
+caveats always include (when the passages support them) one on clearing existing
+high-interest debt and keeping emergency savings before investing, and one on
+fees and costs; also flag hype and pressure to act quickly. Include this line
+verbatim as the final caveat:
 
 "{DISCLAIMER}"
 Be concise: at most 4 suitable options, 5 reasoning steps, 5 risks, 5 caveats,
@@ -206,8 +208,30 @@ class RegionDifferenceLLM(Protocol):
         ...
 
 
+def _json_payload(response: anthropic.types.Message) -> dict[str, object]:
+    """Parse the text block of a schema-constrained response, refusing a truncated or declined one.
+
+    A ``max_tokens`` stop leaves the JSON cut off mid-string; surfacing that as a
+    ``ReasoningError`` gives the CLI and app a readable message instead of a
+    ``JSONDecodeError`` from deep inside ``json.loads``.
+    """
+    if response.stop_reason == "max_tokens":
+        raise ReasoningError("The model's response was cut off at the token limit; try again.")
+    if response.stop_reason == "refusal":
+        raise ReasoningError("The model declined to answer this request.")
+    text = next((block.text for block in response.content if block.type == "text"), None)
+    if text is None:
+        raise ReasoningError("The model returned no text content.")
+    return json.loads(text)
+
+
 class ClaudeRecommendationLLM:
     """Calls Claude with a JSON-schema output constraint for the recommendation.
+
+    Extended thinking is disabled: thinking tokens share the ``max_tokens`` budget
+    with the JSON, and with it on a long answer could be cut off mid-string (seen
+    in the Phase 4 eval). The task is schema-constrained extraction over supplied
+    passages, so the extra latency and truncation risk buy little.
 
     Defaults to ``claude-sonnet-5`` for latency; pass ``model`` to use
     ``claude-opus-5`` if you want to trade speed for reasoning quality — that
@@ -236,11 +260,11 @@ class ClaudeRecommendationLLM:
             model=self.model,
             max_tokens=4000,
             system=system_prompt,
+            thinking={"type": "disabled"},
             messages=[{"role": "user", "content": user_prompt}],
             output_config={"format": {"type": "json_schema", "schema": RECOMMENDATION_SCHEMA}},
         )
-        text = next(block.text for block in response.content if block.type == "text")
-        return json.loads(text)
+        return _json_payload(response)
 
     def compare(self, system_prompt: str, user_prompt: str) -> dict[str, object]:
         """Call Claude and parse its schema-constrained EU/UK comparison response."""
@@ -248,11 +272,11 @@ class ClaudeRecommendationLLM:
             model=self.model,
             max_tokens=2000,
             system=system_prompt,
+            thinking={"type": "disabled"},
             messages=[{"role": "user", "content": user_prompt}],
             output_config={"format": {"type": "json_schema", "schema": DIFFERENCE_SCHEMA}},
         )
-        text = next(block.text for block in response.content if block.type == "text")
-        return json.loads(text)
+        return _json_payload(response)
 
 
 # Caps the evidence sent to the LLM so prompt size (and prefill time) stays bounded.
@@ -269,17 +293,23 @@ def gather_evidence(retriever: Retriever, profile: UserProfile, per_query_limit:
     trusts that filter alone, so a bug or a misconfigured store can't leak an
     out-of-region source into a recommendation.
     """
+    results_per_query = [
+        retriever.search(query, limit=per_query_limit, region=profile.region)
+        for query in profile.retrieval_queries()
+    ]
     seen: dict[str, EvidencePassage] = {}
-    for query in profile.retrieval_queries():
-        if len(seen) >= MAX_EVIDENCE_PASSAGES:
-            break
-        for result in retriever.search(query, limit=per_query_limit, region=profile.region):
-            if result.chunk.region != profile.region:
+    # Take each query's best hit before any query's second hit (round-robin) so the
+    # MAX_EVIDENCE_PASSAGES cap trims depth, not whole queries: filling the cap one
+    # query at a time starved the later goal / debt / region-specific queries entirely.
+    for rank in range(per_query_limit):
+        for results in results_per_query:
+            if rank >= len(results) or results[rank].chunk.region != profile.region:
                 continue
-            if result.chunk.id not in seen:
-                seen[result.chunk.id] = EvidencePassage(str(len(seen) + 1), result.chunk)
+            chunk = results[rank].chunk
+            if chunk.id not in seen:
+                seen[chunk.id] = EvidencePassage(str(len(seen) + 1), chunk)
             if len(seen) >= MAX_EVIDENCE_PASSAGES:
-                break
+                return list(seen.values())
     return list(seen.values())
 
 

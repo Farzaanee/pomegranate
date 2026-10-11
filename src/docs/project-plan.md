@@ -54,8 +54,8 @@ The test suite validates cleaning, chunking, and required provenance metadata of
 See [architecture.md](architecture.md) for the system diagram and request-flow
 walkthrough. Implements the Phase 2 plan below on top of the Phase 1 pipeline:
 
-- `src/investment_rag/profile.py` — the `UserProfile` schema (income, investable amount, goal, timeline, risk tolerance, region) and `retrieval_queries()`, which turns a profile into the sub-queries used to gather evidence (horizon, risk tolerance, fees, goal, and a region-specific query — ISA vs. general account for UK, MiFID II protections for EU).
-- `src/investment_rag/reasoning.py` — `gather_evidence` runs those queries through the Phase 1 `Retriever` with `region` locked to the profile's region, dedupes by chunk id, labels passages `"1"`, `"2"`, … for citation, and stops once `MAX_EVIDENCE_PASSAGES` (10) unique passages are collected. Each passage is truncated to `MAX_PASSAGE_CHARS` in the prompt to keep prefill time down. `ClaudeRecommendationLLM` calls Claude (`claude-sonnet-5` by default, favoring latency over `claude-opus-5`) with `output_config.format` (a JSON schema), so the response is a validated `{summary, suitable_options, reasoning, risks, caveats, citations}` object rather than free text. The system prompt caps each array (4 suitable options, 5 reasoning steps, 5 risks, 5 caveats, 8 citations); since Anthropic's `json_schema` format rejects `maxItems`, `parse_recommendation` re-enforces the same caps by slicing. The prompts frame the task as educational suitability analysis over a synthetic profile — which vehicle *types* fit and why, never a product, an amount, or an instruction to act — which is what stops Claude from softening or partially refusing the answer. `parse_recommendation` then resolves each citation's label against the actual retrieved passages and **drops any that don't match** — the model can invent a label, but a fabricated citation cannot survive into the returned `Recommendation`. If none survive, it raises `ReasoningError` rather than returning an ungrounded answer.
+- `src/investment_rag/profile.py` — the `UserProfile` schema (income, investable amount, goal, timeline, risk tolerance, region) and `retrieval_queries()`, which turns a profile into the sub-queries used to gather evidence (horizon, risk tolerance, fees, goal, debt and emergency savings as of Phase 4, and a region-specific query — ISA vs. general account for UK, MiFID II protections for EU).
+- `src/investment_rag/reasoning.py` — `gather_evidence` runs those queries through the Phase 1 `Retriever` with `region` locked to the profile's region, dedupes by chunk id, labels passages `"1"`, `"2"`, … for citation, and stops once `MAX_EVIDENCE_PASSAGES` (10) unique passages are collected (taking results round-robin across queries as of Phase 4, so no query is starved by the cap). Each passage is truncated to `MAX_PASSAGE_CHARS` in the prompt to keep prefill time down. `ClaudeRecommendationLLM` calls Claude (`claude-sonnet-5` by default, favoring latency over `claude-opus-5`) with `output_config.format` (a JSON schema), so the response is a validated `{summary, suitable_options, reasoning, risks, caveats, citations}` object rather than free text. The system prompt caps each array (4 suitable options, 5 reasoning steps, 5 risks, 5 caveats, 8 citations); since Anthropic's `json_schema` format rejects `maxItems`, `parse_recommendation` re-enforces the same caps by slicing. The prompts frame the task as educational suitability analysis over a synthetic profile — which vehicle *types* fit and why, never a product, an amount, or an instruction to act — which is what stops Claude from softening or partially refusing the answer. `parse_recommendation` then resolves each citation's label against the actual retrieved passages and **drops any that don't match** — the model can invent a label, but a fabricated citation cannot survive into the returned `Recommendation`. If none survive, it raises `ReasoningError` rather than returning an ungrounded answer.
 - `ReasoningAgent.run(profile)` ties it together: gather evidence → prompt → validate → return.
 - Exposed via `investment-rag advise` (CLI) and the "Grounded recommendation" mode in `app.py` (Streamlit), gated on an `ANTHROPIC_API_KEY` being configured.
 - `tests/test_profile.py` and `tests/test_reasoning.py` cover validation, query derivation, evidence dedupe/region-scoping, and citation validation — all against fakes, so the suite stays offline and free.
@@ -96,6 +96,37 @@ applied at the retriever level:
 enforced in code, not just by the retriever's filter — and `investment-rag compare` explains a
 concrete EU/UK difference (e.g. ISA wrappers vs. MiFID II protections) with citations traceable to
 region-matched official sources.
+
+---
+
+## Phase 4 implementation notes
+
+Adds the evaluation harness, fixes the defects it surfaced, and finishes the documentation.
+See [evaluation.md](evaluation.md) for the full method, results, and limitations.
+
+- `src/investment_rag/evaluation.py` runs an eval set through the product's own evidence-gathering,
+  prompt, and parsing functions but keeps the **raw model payload**, so it measures what the model
+  *tried* to cite rather than what validation cleaned up. Deterministic checks cover groundedness
+  (every cited label exists, every cited quote is a faithful excerpt of its passage), region purity,
+  the standing disclaimer, and good-advice hygiene (no product names, hype, return forecasts, or
+  amounts to invest; soft rates for fee and debt awareness). `evals/cases.json` holds 12 cases:
+  8 EU/UK profiles and 4 EU-vs-UK comparison topics.
+- `investment-rag evaluate` (CLI) runs it; `--retrieval-only` needs no API key; `--output` writes a
+  JSON report, and a full run exits non-zero below the 90% bar. The Streamlit app gains an
+  "Evaluation results" mode that renders the stored `evals/results/latest.json`.
+- Defects the first live run exposed, now fixed: thinking tokens could truncate the JSON answer
+  (thinking disabled, truncation raises a readable `ReasoningError`); `gather_evidence` starved its
+  later queries, including the region-specific one, under the 10-passage cap (now round-robin);
+  and debt guidance was neither retrieved nor reliably requested (new retrieval query plus an
+  explicit caveat instruction). Two checker rules that wrongly failed faithful output were relaxed.
+- `tests/test_evaluation.py` (offline, fakes only) covers each check's pass and fail path, the
+  quote-matching edge cases, the threshold, and that the committed eval set stays valid.
+
+**Acceptance criteria:** *Evaluation set passed* — 12 of 12 cases (100%, bar 90%) on the final live
+run, after 4 of 12 on the first; the final figure is not held out, because checks and product were
+adjusted after the first run, and it is one run of a non-deterministic model. *Demoable interface* —
+the Streamlit app runs end-to-end in four modes. *Documentation* — README, architecture,
+evaluation, and setup docs are current, and the README and evaluation doc state the not-financial-advice disclaimer.
 
 ---
 

@@ -1,0 +1,1317 @@
+{
+  "mode": "full",
+  "model": "claude-sonnet-5",
+  "threshold": 0.9,
+  "meets_threshold": true,
+  "summary": {
+    "cases": 12,
+    "cases_passed": 12,
+    "groundedness_rate": 1.0,
+    "citation_label_validity": 1.0,
+    "hallucinated_citation_rate": 0.0,
+    "quote_support_rate": 1.0,
+    "region_match_rate": 1.0,
+    "retrieval_hit_rate": 1.0,
+    "fee_awareness_rate": 1.0,
+    "debt_awareness_rate": 0.875,
+    "errors": 0
+  },
+  "cases": [
+    {
+      "id": "rec-uk-retirement-medium-15y",
+      "kind": "recommendation",
+      "passed": true,
+      "error": null,
+      "stats": {
+        "labels_total": 8,
+        "labels_valid": 8,
+        "quotes_checked": 8,
+        "quotes_supported": 8,
+        "citations_total": 8,
+        "citations_region_ok": 8
+      },
+      "checks": [
+        {
+          "name": "region_pure_evidence",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "evidence_retrieved",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "retrieval_on_topic",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        },
+        {
+          "name": "has_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_fabricated_citations",
+          "passed": true,
+          "hard": true,
+          "detail": "labels not in evidence: []"
+        },
+        {
+          "name": "quotes_supported",
+          "passed": true,
+          "hard": true,
+          "detail": "quote not found in passage: []"
+        },
+        {
+          "name": "parses_with_valid_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "citations_in_profile_region",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "options_cited",
+          "passed": true,
+          "hard": true,
+          "detail": "a suitable option has no valid citation label"
+        },
+        {
+          "name": "disclaimer_present",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_product_names",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_hype",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_return_projection",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_amount_to_invest",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "mentions_fees",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        },
+        {
+          "name": "mentions_debt",
+          "passed": false,
+          "hard": false,
+          "detail": ""
+        }
+      ]
+    },
+    {
+      "id": "rec-uk-deposit-low-3y",
+      "kind": "recommendation",
+      "passed": true,
+      "error": null,
+      "stats": {
+        "labels_total": 8,
+        "labels_valid": 8,
+        "quotes_checked": 8,
+        "quotes_supported": 8,
+        "citations_total": 8,
+        "citations_region_ok": 8
+      },
+      "checks": [
+        {
+          "name": "region_pure_evidence",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "evidence_retrieved",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "retrieval_on_topic",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        },
+        {
+          "name": "has_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_fabricated_citations",
+          "passed": true,
+          "hard": true,
+          "detail": "labels not in evidence: []"
+        },
+        {
+          "name": "quotes_supported",
+          "passed": true,
+          "hard": true,
+          "detail": "quote not found in passage: []"
+        },
+        {
+          "name": "parses_with_valid_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "citations_in_profile_region",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "options_cited",
+          "passed": true,
+          "hard": true,
+          "detail": "a suitable option has no valid citation label"
+        },
+        {
+          "name": "disclaimer_present",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_product_names",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_hype",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_return_projection",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_amount_to_invest",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "mentions_fees",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        },
+        {
+          "name": "mentions_debt",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        }
+      ]
+    },
+    {
+      "id": "rec-uk-growth-high-hype",
+      "kind": "recommendation",
+      "passed": true,
+      "error": null,
+      "stats": {
+        "labels_total": 8,
+        "labels_valid": 8,
+        "quotes_checked": 8,
+        "quotes_supported": 8,
+        "citations_total": 8,
+        "citations_region_ok": 8
+      },
+      "checks": [
+        {
+          "name": "region_pure_evidence",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "evidence_retrieved",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "retrieval_on_topic",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        },
+        {
+          "name": "has_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_fabricated_citations",
+          "passed": true,
+          "hard": true,
+          "detail": "labels not in evidence: []"
+        },
+        {
+          "name": "quotes_supported",
+          "passed": true,
+          "hard": true,
+          "detail": "quote not found in passage: []"
+        },
+        {
+          "name": "parses_with_valid_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "citations_in_profile_region",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "options_cited",
+          "passed": true,
+          "hard": true,
+          "detail": "a suitable option has no valid citation label"
+        },
+        {
+          "name": "disclaimer_present",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_product_names",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_hype",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_return_projection",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_amount_to_invest",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "mentions_fees",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        },
+        {
+          "name": "mentions_debt",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        }
+      ]
+    },
+    {
+      "id": "rec-uk-emergency-low-1y",
+      "kind": "recommendation",
+      "passed": true,
+      "error": null,
+      "stats": {
+        "labels_total": 8,
+        "labels_valid": 8,
+        "quotes_checked": 8,
+        "quotes_supported": 8,
+        "citations_total": 8,
+        "citations_region_ok": 8
+      },
+      "checks": [
+        {
+          "name": "region_pure_evidence",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "evidence_retrieved",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "retrieval_on_topic",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        },
+        {
+          "name": "has_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_fabricated_citations",
+          "passed": true,
+          "hard": true,
+          "detail": "labels not in evidence: []"
+        },
+        {
+          "name": "quotes_supported",
+          "passed": true,
+          "hard": true,
+          "detail": "quote not found in passage: []"
+        },
+        {
+          "name": "parses_with_valid_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "citations_in_profile_region",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "options_cited",
+          "passed": true,
+          "hard": true,
+          "detail": "a suitable option has no valid citation label"
+        },
+        {
+          "name": "disclaimer_present",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_product_names",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_hype",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_return_projection",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_amount_to_invest",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "mentions_fees",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        },
+        {
+          "name": "mentions_debt",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        }
+      ]
+    },
+    {
+      "id": "rec-eu-retirement-medium-20y",
+      "kind": "recommendation",
+      "passed": true,
+      "error": null,
+      "stats": {
+        "labels_total": 8,
+        "labels_valid": 8,
+        "quotes_checked": 8,
+        "quotes_supported": 8,
+        "citations_total": 8,
+        "citations_region_ok": 8
+      },
+      "checks": [
+        {
+          "name": "region_pure_evidence",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "evidence_retrieved",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "retrieval_on_topic",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        },
+        {
+          "name": "has_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_fabricated_citations",
+          "passed": true,
+          "hard": true,
+          "detail": "labels not in evidence: []"
+        },
+        {
+          "name": "quotes_supported",
+          "passed": true,
+          "hard": true,
+          "detail": "quote not found in passage: []"
+        },
+        {
+          "name": "parses_with_valid_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "citations_in_profile_region",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "options_cited",
+          "passed": true,
+          "hard": true,
+          "detail": "a suitable option has no valid citation label"
+        },
+        {
+          "name": "disclaimer_present",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_product_names",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_hype",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_return_projection",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_amount_to_invest",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "mentions_fees",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        },
+        {
+          "name": "mentions_debt",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        }
+      ]
+    },
+    {
+      "id": "rec-eu-deposit-low-5y",
+      "kind": "recommendation",
+      "passed": true,
+      "error": null,
+      "stats": {
+        "labels_total": 8,
+        "labels_valid": 8,
+        "quotes_checked": 8,
+        "quotes_supported": 8,
+        "citations_total": 8,
+        "citations_region_ok": 8
+      },
+      "checks": [
+        {
+          "name": "region_pure_evidence",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "evidence_retrieved",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "retrieval_on_topic",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        },
+        {
+          "name": "has_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_fabricated_citations",
+          "passed": true,
+          "hard": true,
+          "detail": "labels not in evidence: []"
+        },
+        {
+          "name": "quotes_supported",
+          "passed": true,
+          "hard": true,
+          "detail": "quote not found in passage: []"
+        },
+        {
+          "name": "parses_with_valid_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "citations_in_profile_region",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "options_cited",
+          "passed": true,
+          "hard": true,
+          "detail": "a suitable option has no valid citation label"
+        },
+        {
+          "name": "disclaimer_present",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_product_names",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_hype",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_return_projection",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_amount_to_invest",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "mentions_fees",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        },
+        {
+          "name": "mentions_debt",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        }
+      ]
+    },
+    {
+      "id": "rec-eu-growth-high-10y",
+      "kind": "recommendation",
+      "passed": true,
+      "error": null,
+      "stats": {
+        "labels_total": 8,
+        "labels_valid": 8,
+        "quotes_checked": 8,
+        "quotes_supported": 8,
+        "citations_total": 8,
+        "citations_region_ok": 8
+      },
+      "checks": [
+        {
+          "name": "region_pure_evidence",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "evidence_retrieved",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "retrieval_on_topic",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        },
+        {
+          "name": "has_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_fabricated_citations",
+          "passed": true,
+          "hard": true,
+          "detail": "labels not in evidence: []"
+        },
+        {
+          "name": "quotes_supported",
+          "passed": true,
+          "hard": true,
+          "detail": "quote not found in passage: []"
+        },
+        {
+          "name": "parses_with_valid_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "citations_in_profile_region",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "options_cited",
+          "passed": true,
+          "hard": true,
+          "detail": "a suitable option has no valid citation label"
+        },
+        {
+          "name": "disclaimer_present",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_product_names",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_hype",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_return_projection",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_amount_to_invest",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "mentions_fees",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        },
+        {
+          "name": "mentions_debt",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        }
+      ]
+    },
+    {
+      "id": "rec-eu-lowincome-emergency-2y",
+      "kind": "recommendation",
+      "passed": true,
+      "error": null,
+      "stats": {
+        "labels_total": 7,
+        "labels_valid": 7,
+        "quotes_checked": 7,
+        "quotes_supported": 7,
+        "citations_total": 7,
+        "citations_region_ok": 7
+      },
+      "checks": [
+        {
+          "name": "region_pure_evidence",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "evidence_retrieved",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "retrieval_on_topic",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        },
+        {
+          "name": "has_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_fabricated_citations",
+          "passed": true,
+          "hard": true,
+          "detail": "labels not in evidence: []"
+        },
+        {
+          "name": "quotes_supported",
+          "passed": true,
+          "hard": true,
+          "detail": "quote not found in passage: []"
+        },
+        {
+          "name": "parses_with_valid_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "citations_in_profile_region",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "options_cited",
+          "passed": true,
+          "hard": true,
+          "detail": "a suitable option has no valid citation label"
+        },
+        {
+          "name": "disclaimer_present",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_product_names",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_hype",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_return_projection",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_amount_to_invest",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "mentions_fees",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        },
+        {
+          "name": "mentions_debt",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        }
+      ]
+    },
+    {
+      "id": "cmp-protections",
+      "kind": "comparison",
+      "passed": true,
+      "error": null,
+      "stats": {
+        "labels_total": 5,
+        "labels_valid": 5,
+        "quotes_checked": 5,
+        "quotes_supported": 5,
+        "citations_total": 0,
+        "citations_region_ok": 0
+      },
+      "checks": [
+        {
+          "name": "region_pure_evidence",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "both_regions_retrieved",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "evidence_retrieved",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "retrieval_on_topic",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        },
+        {
+          "name": "has_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_fabricated_citations",
+          "passed": true,
+          "hard": true,
+          "detail": "labels not in evidence: []"
+        },
+        {
+          "name": "quotes_supported",
+          "passed": true,
+          "hard": true,
+          "detail": "quote not found in passage: []"
+        },
+        {
+          "name": "parses_with_valid_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "cites_both_regions",
+          "passed": true,
+          "hard": true,
+          "detail": "a comparison must cite at least one EU and one UK source"
+        },
+        {
+          "name": "states_key_difference",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_product_names",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_hype",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_return_projection",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_amount_to_invest",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        }
+      ]
+    },
+    {
+      "id": "cmp-check-firm",
+      "kind": "comparison",
+      "passed": true,
+      "error": null,
+      "stats": {
+        "labels_total": 6,
+        "labels_valid": 6,
+        "quotes_checked": 6,
+        "quotes_supported": 6,
+        "citations_total": 0,
+        "citations_region_ok": 0
+      },
+      "checks": [
+        {
+          "name": "region_pure_evidence",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "both_regions_retrieved",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "evidence_retrieved",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "retrieval_on_topic",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        },
+        {
+          "name": "has_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_fabricated_citations",
+          "passed": true,
+          "hard": true,
+          "detail": "labels not in evidence: []"
+        },
+        {
+          "name": "quotes_supported",
+          "passed": true,
+          "hard": true,
+          "detail": "quote not found in passage: []"
+        },
+        {
+          "name": "parses_with_valid_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "cites_both_regions",
+          "passed": true,
+          "hard": true,
+          "detail": "a comparison must cite at least one EU and one UK source"
+        },
+        {
+          "name": "states_key_difference",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_product_names",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_hype",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_return_projection",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_amount_to_invest",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        }
+      ]
+    },
+    {
+      "id": "cmp-costs",
+      "kind": "comparison",
+      "passed": true,
+      "error": null,
+      "stats": {
+        "labels_total": 6,
+        "labels_valid": 6,
+        "quotes_checked": 6,
+        "quotes_supported": 6,
+        "citations_total": 0,
+        "citations_region_ok": 0
+      },
+      "checks": [
+        {
+          "name": "region_pure_evidence",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "both_regions_retrieved",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "evidence_retrieved",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "retrieval_on_topic",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        },
+        {
+          "name": "has_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_fabricated_citations",
+          "passed": true,
+          "hard": true,
+          "detail": "labels not in evidence: []"
+        },
+        {
+          "name": "quotes_supported",
+          "passed": true,
+          "hard": true,
+          "detail": "quote not found in passage: []"
+        },
+        {
+          "name": "parses_with_valid_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "cites_both_regions",
+          "passed": true,
+          "hard": true,
+          "detail": "a comparison must cite at least one EU and one UK source"
+        },
+        {
+          "name": "states_key_difference",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_product_names",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_hype",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_return_projection",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_amount_to_invest",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        }
+      ]
+    },
+    {
+      "id": "cmp-scams",
+      "kind": "comparison",
+      "passed": true,
+      "error": null,
+      "stats": {
+        "labels_total": 6,
+        "labels_valid": 6,
+        "quotes_checked": 6,
+        "quotes_supported": 6,
+        "citations_total": 0,
+        "citations_region_ok": 0
+      },
+      "checks": [
+        {
+          "name": "region_pure_evidence",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "both_regions_retrieved",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "evidence_retrieved",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "retrieval_on_topic",
+          "passed": true,
+          "hard": false,
+          "detail": ""
+        },
+        {
+          "name": "has_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_fabricated_citations",
+          "passed": true,
+          "hard": true,
+          "detail": "labels not in evidence: []"
+        },
+        {
+          "name": "quotes_supported",
+          "passed": true,
+          "hard": true,
+          "detail": "quote not found in passage: []"
+        },
+        {
+          "name": "parses_with_valid_citations",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "cites_both_regions",
+          "passed": true,
+          "hard": true,
+          "detail": "a comparison must cite at least one EU and one UK source"
+        },
+        {
+          "name": "states_key_difference",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_product_names",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_hype",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_return_projection",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        },
+        {
+          "name": "no_amount_to_invest",
+          "passed": true,
+          "hard": true,
+          "detail": ""
+        }
+      ]
+    }
+  ]
+}

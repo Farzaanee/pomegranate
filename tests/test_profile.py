@@ -38,3 +38,11 @@ def test_invalid_profile_fields_are_rejected(kwargs) -> None:
 
     with pytest.raises(ValueError):
         UserProfile(**base)
+
+
+def test_every_profile_asks_about_debt_and_emergency_savings() -> None:
+    """Good advice checks debt and a savings buffer first, so the evidence must cover it for both regions."""
+    for region in ("UK", "EU"):
+        queries = UserProfile(2000, 1000, "retirement", 10, "medium", region).retrieval_queries()
+
+        assert any("debt" in query and "emergency savings" in query for query in queries)

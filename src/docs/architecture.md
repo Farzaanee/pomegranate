@@ -1,21 +1,24 @@
 # Architecture
 
-How Phase 1 (retrieval), Phase 2 (reasoning), and Phase 3 (multi-jurisdiction
-routing) fit together: three phases sharing one evidence trail. Phase 1 turns
+How Phase 1 (retrieval), Phase 2 (reasoning), Phase 3 (multi-jurisdiction
+routing), and Phase 4 (evaluation) fit together: four phases sharing one evidence trail. Phase 1 turns
 official EU/UK sources into a searchable, provenance-tagged vector store.
 Phase 2 adds a reasoning agent that queries that same store on a user's behalf
 and asks Claude for a recommendation — but only returns it once every claim
 resolves back to a real, retrieved passage. Phase 3 hardens the region
 boundary Phase 2 already enforced at the retriever level, and adds a second
-request path that explains a jurisdiction difference directly.
+request path that explains a jurisdiction difference directly. Phase 4 adds no
+request path: it replays cases through the Phase 2 and 3 functions and scores
+the raw model output against the evidence, so the trust boundary above is
+measured rather than assumed.
 
 > Educational only, not regulated financial advice. This diagram reflects the
 > code in [`src/investment_rag/`](../investment_rag/) and [`app.py`](../../app.py)
-> as of Phase 3.
+> as of Phase 4.
 
 An interactive version of this diagram was published as an Artifact at
 <https://claude.ai/code/artifact/dc91dada-5ff5-417c-ad3e-2d1433ff9545> as of
-Phase 2 and has not been republished for Phase 3; this document is the
+Phase 2 and has not been republished since; this document is the
 canonical, version-controlled copy and is kept current.
 
 ## System diagram
@@ -49,6 +52,14 @@ flowchart TD
         TOPIC --> CGATH --> CLLM --> CVAL
     end
 
+    subgraph P4["PHASE 4 — EVALUATION"]
+        CASES["Eval set<br/>evals/cases.json · 8 profiles + 4 comparisons"]
+        RUN["Replay through the Phase 2 and 3 functions, keep the raw model payload<br/>run_evaluation() · evaluation.py"]
+        SCORE["Score against the retrieved evidence<br/>label validity · quote support · region match<br/>disclaimer · no hype / products / forecasts · fee and debt mentions"]
+        REPORT["Report<br/>evals/results/latest.json<br/>exit 1 below 90% of cases"]
+        CASES --> RUN --> SCORE --> REPORT
+    end
+
     CHK -- "embeddings + metadata" --> STORE
     STORE -- "kNN query, region filter" --> SRCH
     STORE -- "region-scoped passages, re-checked in gather_evidence" --> GATH
@@ -59,9 +70,14 @@ flowchart TD
     CVAL -- "at least 1 region-matched citation" --> DIFF["RegionDifference<br/>eu_summary · uk_summary · key_difference · citations"]
     CVAL -- "0 valid citations" --> ERR
 
-    SRCH -- "SearchResult array" --> UI["User-facing surfaces<br/>CLI: investment-rag query / advise / compare<br/>Streamlit app.py: Retrieval search / Grounded recommendation / Compare EU vs UK"]
+    STORE -- "same gathering functions" --> RUN
+    LLM -. "raw payload" .-> RUN
+    CLLM -. "raw payload" .-> RUN
+
+    SRCH -- "SearchResult array" --> UI["User-facing surfaces<br/>CLI: investment-rag query / advise / compare / evaluate<br/>Streamlit app.py: Retrieval search / Grounded recommendation / Compare EU vs UK / Evaluation results"]
     REC --> UI
     DIFF --> UI
+    REPORT --> UI
 
     classDef gate stroke-width:3px
     class VAL,CVAL gate
@@ -69,9 +85,9 @@ flowchart TD
 
 ## How to read it
 
-**All three phases share one retrieval mechanism.** Phase 1's `Retriever.search()`
+**All the phases share one retrieval mechanism.** Phase 1's `Retriever.search()`
 is called directly for plain queries, and again internally by Phase 2's
-`gather_evidence()` and Phase 3's `gather_region_comparison_evidence()` — every
+`gather_evidence()` and Phase 3's `gather_region_comparison_evidence()` — and by the Phase 4 harness, which calls those same functions — every
 call locked to a region, so a UK profile never sees EU-only passages or vice
 versa. Phase 3 goes one step further: `gather_evidence()` no longer trusts the
 retriever's `where` filter alone — it re-checks each result's `region` field
@@ -87,6 +103,10 @@ if that prefix matches the region of the chunk it resolved to, so the model
 can't launder an EU claim under a UK-looking label or vice versa. This is what
 backs the project's low-hallucination goal: an answer cannot reach the user
 carrying a citation that doesn't resolve to a real, region-matched source.
+Phase 4 then checks the other side of that boundary: because validation hides
+fabricated labels from the user, the harness scores the model's *raw* output to
+report how often validation had something to remove (see
+[evaluation.md](evaluation.md)).
 
 ## The two request paths
 
@@ -106,20 +126,25 @@ carrying a citation that doesn't resolve to a real, region-matched source.
 
 1. `UserProfile` is validated (`profile.py`) — bad enums or negative amounts are
    rejected before any work happens.
-2. `retrieval_queries()` expands the profile into five sub-queries: horizon,
-   risk tolerance, fees, goal, and one region-specific query (ISA vs. general
-   account for UK, MiFID II protections for EU).
+2. `retrieval_queries()` expands the profile into six sub-queries: horizon,
+   risk tolerance, fees, goal, debt and emergency savings (Phase 4), and one
+   region-specific query (ISA vs. general account for UK, MiFID II protections
+   for EU).
 3. `gather_evidence()` runs each through `Retriever.search(region=profile.region)`,
-   dedupes by chunk id, labels the survivors `1, 2, 3, …`, and stops once
-   `MAX_EVIDENCE_PASSAGES` (10) unique passages are collected, so prompt size
-   stays bounded regardless of how many sub-queries still have budget left.
+   then takes results round-robin (every query's best hit before any query's
+   second), dedupes by chunk id, labels the survivors `1, 2, 3, …`, and stops
+   once `MAX_EVIDENCE_PASSAGES` (10) unique passages are collected, so prompt
+   size stays bounded without any single query crowding out the others. (Before
+   Phase 4 the cap was filled one query at a time, which left the goal and
+   region-specific queries with no passages at all.)
 4. `build_user_prompt()` renders the profile — explicitly framed as synthetic
    demo data — plus the numbered passages (each truncated to
    `MAX_PASSAGE_CHARS`), and asks for suitability reasoning across vehicle
    *types* rather than a single pick or an amount to invest.
    `ClaudeRecommendationLLM.recommend()` sends it to Claude (`claude-sonnet-5`
    by default, chosen for latency over `claude-opus-5`) with a JSON-schema
-   output constraint, so the reply is a structured
+   output constraint and extended thinking disabled (thinking tokens share the
+   `max_tokens` budget with the JSON and could truncate it), so the reply is a structured
    `{summary, suitable_options, reasoning, risks, caveats, citations}` object
    rather than free text. Framing the task as education over synthetic profiles
    is what keeps Claude from softening or declining the response the way it does
@@ -164,13 +189,17 @@ carrying a citation that doesn't resolve to a real, region-matched source.
 | [`collect.py`](../investment_rag/collect.py) | 1 | Downloads allow-listed pages, strips chrome, saves reviewable JSON. Refuses to bypass a `403`. |
 | [`chunking.py`](../investment_rag/chunking.py) | 1 | Sentence-boundary chunking with a carried-over overlap, so no passage loses its context mid-sentence. |
 | [`retrieval.py`](../investment_rag/retrieval.py) | 1 | ONNX MiniLM embeddings, persistent Chroma storage, and the region-filtered `search()` both phases call. |
-| [`profile.py`](../investment_rag/profile.py) | 2 | `UserProfile` plus `retrieval_queries()`, which turns income/goal/timeline/risk/region into five targeted evidence queries. |
-| [`reasoning.py`](../investment_rag/reasoning.py) | 2, 3 | Evidence gathering (with a region-leak check as of Phase 3), the Claude calls (`recommend()`, `compare()`) with a JSON-schema output constraint, and the citation-validation gates for both request paths. |
-| [`cli.py`](../investment_rag/cli.py) | all | The `investment-rag` commands: `collect`, `build`, `query` (Phase 1), `advise` (Phase 2), and `compare` (Phase 3). |
-| [`app.py`](../../app.py) | all | Streamlit UI with three modes — retrieval search, the profile form behind grounded recommendations, and the EU vs UK comparison. |
+| [`profile.py`](../investment_rag/profile.py) | 2 | `UserProfile` plus `retrieval_queries()`, which turns income/goal/timeline/risk/region into six targeted evidence queries. |
+| [`reasoning.py`](../investment_rag/reasoning.py) | 2, 3 | Evidence gathering (round-robin across queries and with a region-leak check as of Phase 3/4), the Claude calls (`recommend()`, `compare()`) with a JSON-schema output constraint, and the citation-validation gates for both request paths. |
+| [`evaluation.py`](../investment_rag/evaluation.py) | 4 | Eval cases, the deterministic groundedness / citation / region / language checks, `run_evaluation()`, and the report renderers. Reads raw model payloads, so it sees hallucinations validation would hide. |
+| [`cli.py`](../investment_rag/cli.py) | all | The `investment-rag` commands: `collect`, `build`, `query` (Phase 1), `advise` (Phase 2), `compare` (Phase 3), and `evaluate` (Phase 4). |
+| [`app.py`](../../app.py) | all | Streamlit UI with four modes — retrieval search, the profile form behind grounded recommendations, the EU vs UK comparison, and the stored evaluation results. |
 
 ## What comes next
 
-Phase 4 adds an evaluation harness for groundedness and hallucination rate.
-See [project-plan.md](project-plan.md) for the full phase-by-phase plan and
-acceptance criteria.
+The planned phases are complete. Open items, in the order they would pay off:
+fix the scraper residue in the cleaned ESMA text and rebuild the index, grow the
+eval set (including adversarial profiles), and add a claim-faithfulness check
+(LLM judge or human spot-check) on top of the current citation checks — see the
+limitations in [evaluation.md](evaluation.md). [project-plan.md](project-plan.md)
+has the phase-by-phase plan and acceptance criteria.

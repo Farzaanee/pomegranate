@@ -1,22 +1,27 @@
-"""Command-line entry points for the RAG pipeline (Phase 1) and reasoning agent (Phase 2)."""
+"""Command-line entry points for the RAG pipeline, reasoning agent, EU/UK comparison, and evaluation."""
 
 import argparse
 import json
+import shutil
+import tempfile
 from pathlib import Path
 
 from .chunking import chunk_documents
 from .collect import CollectionError, collect_source, load_sources, save_documents
 from .models import SourceDocument
 from .profile import GOALS, RISK_TOLERANCES, UserProfile
+from .evaluation import load_cases, run_evaluation
 from .reasoning import DISCLAIMER, ClaudeRecommendationLLM, ReasoningAgent, explain_region_difference
 from .retrieval import Retriever
 
 
 def _load_documents(directory: str) -> list[SourceDocument]:
+    """Load every cleaned source document JSON file in ``directory``."""
     return [SourceDocument(**json.loads(path.read_text(encoding="utf-8"))) for path in Path(directory).glob("*.json")]
 
 
 def main() -> None:
+    """Parse the command line and dispatch to the selected ``investment-rag`` subcommand."""
     parser = argparse.ArgumentParser(description="Build and query the investment education knowledge base.")
     commands = parser.add_subparsers(dest="command", required=True)
     collect_parser = commands.add_parser("collect", help="Download and clean approved sources.")
@@ -46,6 +51,15 @@ def main() -> None:
     compare_parser.add_argument("topic")
     compare_parser.add_argument("--store", default="data/index")
     compare_parser.add_argument("--model", default="claude-sonnet-5", help="Anthropic model for the comparison step.")
+    evaluate_parser = commands.add_parser(
+        "evaluate", help="Phase 4: score groundedness, citation accuracy, and hallucination rate on an eval set."
+    )
+    evaluate_parser.add_argument("--cases", default="evals/cases.json")
+    evaluate_parser.add_argument("--store", default="data/index")
+    evaluate_parser.add_argument("--model", default="claude-sonnet-5", help="Anthropic model under evaluation.")
+    evaluate_parser.add_argument("--retrieval-only", action="store_true",
+                                 help="Skip the Claude calls (no API key needed); checks retrieval and region routing only.")
+    evaluate_parser.add_argument("--output", help="Also write the full report as JSON to this path.")
     args = parser.parse_args()
 
     if args.command == "collect":
@@ -69,6 +83,20 @@ def main() -> None:
     elif args.command == "query":
         for item in Retriever(args.store).search(args.question, args.limit, args.region):
             print(f"[{item.chunk.source_name} | {item.chunk.region} | {item.chunk.url}]\n{item.chunk.text}\n")
+    elif args.command == "evaluate":
+        llm = None if args.retrieval_only else ClaudeRecommendationLLM(model=args.model)
+        # Chroma writes journal files on open; evaluate a throwaway copy so the committed index stays byte-identical.
+        with tempfile.TemporaryDirectory(prefix="chroma-eval-") as scratch:
+            store_copy = Path(scratch) / "index"
+            shutil.copytree(args.store, store_copy)
+            report = run_evaluation(load_cases(args.cases), Retriever(store_copy), llm,
+                                    "" if llm is None else args.model)
+        print(report.to_markdown())
+        if args.output:
+            Path(args.output).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.output).write_text(json.dumps(report.to_dict(), indent=2) + "\n", encoding="utf-8")
+        if llm is not None and not report.meets_threshold():
+            raise SystemExit(1)
     elif args.command == "compare":
         llm = ClaudeRecommendationLLM(model=args.model)
         result = explain_region_difference(Retriever(args.store), llm, args.topic)

@@ -1,7 +1,7 @@
 # Setup
 
-Getting the knowledge-base pipeline (Phase 1) and reasoning agent (Phase 2)
-running locally. For what the project is and where it's going, see
+Getting the knowledge-base pipeline (Phase 1), reasoning agent (Phase 2),
+EU/UK comparison (Phase 3), and evaluation harness (Phase 4) running locally. For what the project is and where it's going, see
 [README.md](README.md).
 
 ## Prerequisites
@@ -71,12 +71,15 @@ All tests run **offline** (no network, no model download):
 - `tests/test_integration.py` — real `chunk_document` output and real on-disk
   Chroma indexing/retrieval with a deterministic fake embedder
 - `tests/test_profile.py` — user profile validation and query derivation
-- `tests/test_reasoning.py` — evidence gathering, citation validation, and the
-  reasoning agent, all with a fake LLM (no API key or network needed)
+- `tests/test_reasoning.py` — evidence gathering, citation validation, the
+  EU/UK comparison, and the reasoning agent, all with a fake LLM (no API key or
+  network needed)
+- `tests/test_evaluation.py` — every evaluation check's pass and fail path, quote
+  matching, the pass threshold, and that `evals/cases.json` stays valid
 
 ## Run the pipeline
 
-Three stages, each a subcommand of `investment-rag`:
+Each stage is a subcommand of `investment-rag`:
 
 ```bash
 # 1. Download + clean the allow-listed sources into data/raw/*.json
@@ -93,6 +96,16 @@ uv run investment-rag query "Why does diversification matter when investing?" --
 #    ANTHROPIC_API_KEY — see Configuration below)
 uv run investment-rag advise --income 2500 --amount 3000 --goal retirement \
     --timeline 15 --risk medium --region UK
+
+# 5. Phase 3: explain an EU vs UK difference on a topic (needs ANTHROPIC_API_KEY)
+uv run investment-rag compare "How can an investor check that a firm is authorised?"
+
+# 6. Phase 4: score groundedness, citation accuracy, and hallucination rate.
+#    Free, no key (retrieval and region routing only):
+uv run investment-rag evaluate --retrieval-only
+#    Full run: ~12 Claude calls, a few minutes, needs ANTHROPIC_API_KEY.
+#    Exits 1 if fewer than 90% of cases pass.
+uv run investment-rag evaluate --output evals/results/latest.json
 ```
 
 Useful flags:
@@ -112,6 +125,11 @@ Useful flags:
 | `advise` | `--risk` | *(required)* | `low`, `medium`, or `high` |
 | `advise` | `--region` | *(required)* | `EU` or `UK`; also scopes evidence retrieval |
 | `advise` | `--model` | `claude-sonnet-5` | Anthropic model used for the reasoning step |
+| `compare` | `--model` / `--store` | `claude-sonnet-5` / `data/index` | model for the comparison step; vector store to search |
+| `evaluate` | `--cases` | `evals/cases.json` | the eval set |
+| `evaluate` | `--retrieval-only` | off | skip the Claude calls; no API key needed |
+| `evaluate` | `--output` | *(none)* | also write the full report as JSON (the app's "Evaluation results" mode reads `evals/results/latest.json`) |
+| `evaluate` | `--model` / `--store` | `claude-sonnet-5` / `data/index` | model under evaluation; vector store (evaluated on a temp copy, never modified) |
 
 `data/raw/` and `data/index/` **are committed** so the deployed Streamlit app
 opens a prebuilt index instead of re-embedding on startup. `data/chroma/` is a
@@ -130,12 +148,13 @@ whenever `data/raw/` or the chunking logic changes.
 Before raising `--pages-per-source`, check each publisher's terms and robots
 policy and eyeball the collected JSON in `data/raw/`.
 
-### Anthropic API key (Phase 2 only)
+### Anthropic API key (Phases 2-4)
 
-`investment-rag advise` and the app's "Grounded recommendation" mode call
-Claude to turn retrieved evidence into a cited recommendation
+`investment-rag advise`, `compare`, a full `evaluate` run, and the app's
+"Grounded recommendation" and "Compare EU vs UK" modes call Claude
 (`investment_rag.reasoning.ClaudeRecommendationLLM`). Retrieval and search
-(`collect` / `build` / `query`) never need this — only `advise` does.
+(`collect` / `build` / `query`), `evaluate --retrieval-only`, and the app's
+"Evaluation results" mode never need a key.
 
 - **Locally:** `export ANTHROPIC_API_KEY=sk-ant-...` (or run `ant auth login`,
   which the SDK also picks up automatically).
@@ -159,6 +178,14 @@ MoneyHelper is the most reliable of the three defaults.
 
 **`TypeError: unsupported operand type(s) for |` on import.** You're on Python
 3.9. Use 3.10+ (`uv python install 3.12`).
+
+**`evaluate` reports every case as `aborted: TypeError: Could not resolve
+authentication method`.** No API key is set, so every Claude call failed. Set
+`ANTHROPIC_API_KEY`, or use `--retrieval-only`.
+
+**`advise` / `compare` raises `ReasoningError: ... cut off at the token limit`.**
+The model's answer hit `max_tokens`. Retry; if it recurs, raise `max_tokens` in
+`ClaudeRecommendationLLM`.
 
 **`advise` raises `anthropic.AuthenticationError` or exits complaining about a
 missing key.** Set `ANTHROPIC_API_KEY` — see *Anthropic API key* above.
