@@ -23,7 +23,8 @@ citation accuracy, and hallucination rate (Phase 4). The latest live run passed
 12 of 12 cases against a 90% bar — read [evaluation.md](src/docs/evaluation.md)
 for what that does and does not show (it is a small, self-tuned, single-run
 result, not a benchmark). The phase plan is in
-[project-plan.md](src/docs/project-plan.md).
+[project-plan.md](src/docs/project-plan.md); what each phase built and what
+was learned is in [implementation-notes.md](src/docs/implementation-notes.md).
 
 **Architecture:** [architecture.md](src/docs/architecture.md) has the full
 system diagram (how all the phases share one retrieval mechanism) and a
@@ -84,7 +85,7 @@ app.py           Streamlit UI (four modes)
 evals/           cases.json (the eval set) and results/latest.json (the latest report)
 tests/           offline tests for every stage (fakes stand in for Chroma + Claude)
 sources.json     allow-list of official seed pages
-src/docs/        architecture.md, evaluation.md, project-plan.md, SETUP.md, and design-notes docs
+src/docs/        architecture.md, evaluation.md, implementation-notes.md, project-plan.md, SETUP.md, and design-notes docs
 ```
 
 ## Design decisions

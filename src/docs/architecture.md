@@ -202,4 +202,6 @@ fix the scraper residue in the cleaned ESMA text and rebuild the index, grow the
 eval set (including adversarial profiles), and add a claim-faithfulness check
 (LLM judge or human spot-check) on top of the current citation checks — see the
 limitations in [evaluation.md](evaluation.md). [project-plan.md](project-plan.md)
-has the phase-by-phase plan and acceptance criteria.
+has the phase-by-phase plan and acceptance criteria, and
+[implementation-notes.md](implementation-notes.md) records what each phase built
+and learned.

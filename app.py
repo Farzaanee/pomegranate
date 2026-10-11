@@ -297,7 +297,7 @@ def main() -> None:
         st.caption(
             f"{len(sources)} official source(s) across {len(documents)} indexed page(s). "
             "Phase 2 adds a reasoning agent on top of Phase 1 retrieval; Phase 3 adds the EU vs "
-            "UK comparison mode; Phase 4 adds the evaluation harness — see project-plan.md."
+            "UK comparison mode; Phase 4 adds the evaluation harness — see implementation-notes.md."
         )
         mode = st.radio("Mode", ["Retrieval search", "Grounded recommendation", "Compare EU vs UK",
                                  "Evaluation results"])
